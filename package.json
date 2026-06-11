@@ -1,0 +1,35 @@
+{
+  "name": "maintflow",
+  "version": "0.1.0",
+  "private": true,
+  "description": "MaintFlow — GMAO (Gestion de Maintenance Assistée par Ordinateur). Monorepo: API NestJS, Web Next.js, Mobile Flutter.",
+  "packageManager": "pnpm@10.30.3",
+  "engines": {
+    "node": ">=20.0.0",
+    "pnpm": ">=9.0.0"
+  },
+  "scripts": {
+    "build": "turbo run build",
+    "dev": "turbo run dev",
+    "lint": "turbo run lint",
+    "test": "turbo run test",
+    "typecheck": "turbo run typecheck",
+    "format": "prettier --write \"**/*.{ts,tsx,js,jsx,json,md}\"",
+    "format:check": "prettier --check \"**/*.{ts,tsx,js,jsx,json,md}\"",
+    "db:generate": "pnpm --filter @maintflow/api db:generate",
+    "db:migrate": "pnpm --filter @maintflow/api db:migrate",
+    "db:seed": "pnpm --filter @maintflow/api db:seed",
+    "db:studio": "pnpm --filter @maintflow/api db:studio",
+    "infra:up": "docker compose up -d",
+    "infra:down": "docker compose down",
+    "prepare": "husky || true"
+  },
+  "devDependencies": {
+    "@commitlint/cli": "^19.5.0",
+    "@commitlint/config-conventional": "^19.5.0",
+    "husky": "^9.1.6",
+    "lint-staged": "^15.2.10",
+    "prettier": "^3.3.3",
+    "turbo": "^2.3.3"
+  }
+}

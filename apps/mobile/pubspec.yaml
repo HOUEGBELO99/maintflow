@@ -1,0 +1,64 @@
+name: maintflow_mobile
+description: MaintFlow — application technicien (GMAO). Offline-first.
+publish_to: "none"
+version: 0.1.0+1
+
+environment:
+  sdk: ">=3.5.0 <4.0.0"
+  flutter: ">=3.24.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  # State management
+  flutter_riverpod: ^2.6.1
+  riverpod_annotation: ^2.6.1
+
+  # Navigation
+  go_router: ^14.6.1
+
+  # Networking
+  dio: ^5.7.0
+
+  # Offline / local DB
+  drift: ^2.21.0
+  sqlite3_flutter_libs: ^0.5.26
+  path_provider: ^2.1.5
+  path: ^1.9.0
+
+  # Auth (Supabase)
+  supabase_flutter: ^2.8.1
+
+  # Secure storage
+  flutter_secure_storage: ^9.2.2
+
+  # Field features (from the prototype technician flows)
+  mobile_scanner: ^6.0.2 # QR / barcode scan
+  image_picker: ^1.1.2 # intervention photos
+  signature: ^5.5.0 # closure signature
+  geolocator: ^13.0.2 # check-in geolocation
+  connectivity_plus: ^6.1.0 # detect connectivity for sync queue
+
+  # Models / serialization
+  freezed_annotation: ^2.4.4
+  json_annotation: ^4.9.0
+
+  # Push notifications
+  firebase_core: ^3.8.0
+  firebase_messaging: ^15.1.5
+
+  intl: ^0.19.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^5.0.0
+  build_runner: ^2.4.13
+  riverpod_generator: ^2.6.3
+  drift_dev: ^2.21.0
+  freezed: ^2.5.7
+  json_serializable: ^6.8.0
+
+flutter:
+  uses-material-design: true

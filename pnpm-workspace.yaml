@@ -1,0 +1,6 @@
+packages:
+  - "apps/api"
+  - "apps/web"
+  - "packages/*"
+# Note: apps/mobile is a Flutter (Dart) project — managed by `flutter pub`,
+# intentionally excluded from the pnpm/Turborepo TypeScript workspace.
