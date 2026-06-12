@@ -46,14 +46,15 @@ try {
 
 // 2) Our app: login -> dashboard
 try {
+  page.on('console', (m) => m.type() === 'error' && console.log('  [browser]', m.text()));
+  page.on('requestfailed', (r) => console.log('  [reqfail]', r.url(), r.failure()?.errorText));
   await page.goto('http://localhost:3000/login', { waitUntil: 'networkidle', timeout: 30000 });
-  await page.waitForTimeout(800);
+  await page.waitForTimeout(1500);
   await page.screenshot({ path: `${out}/app-login.png` });
   await page.getByRole('button', { name: 'Se connecter' }).click();
-  await page.waitForURL('**/dashboard', { timeout: 15000 });
-  await page.waitForTimeout(1800);
-  await page.screenshot({ path: `${out}/app-dashboard.png` });
-  console.log('✓ app-login.png, app-dashboard.png');
+  await page.waitForTimeout(5000);
+  await page.screenshot({ path: `${out}/app-dashboard.png`, fullPage: true });
+  console.log('  url after login:', page.url());
 } catch (e) {
   console.log('✗ app:', e.message);
 }
