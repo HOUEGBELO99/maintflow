@@ -10,6 +10,7 @@ import { JwtService } from '@nestjs/jwt';
 
 import type { UserRole } from '@maintflow/shared';
 import { IS_PUBLIC_KEY } from '../decorators/public.decorator';
+import type { AuthenticatedRequest } from '../decorators/current-user.decorator';
 import { PrismaService } from '../../modules/prisma/prisma.service';
 
 /**
@@ -33,7 +34,7 @@ export class JwtAuthGuard implements CanActivate {
     ]);
     if (isPublic) return true;
 
-    const req = context.switchToHttp().getRequest();
+    const req = context.switchToHttp().getRequest<AuthenticatedRequest>();
     const token = this.extractToken(req.headers.authorization);
     if (!token) throw new UnauthorizedException('Missing bearer token');
 
