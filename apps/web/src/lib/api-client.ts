@@ -7,6 +7,7 @@ import type {
   Intervention,
   InterventionKind,
   InterventionStatus,
+  Invitation,
   Machine,
   PlanRule,
   Reminder,
@@ -100,6 +101,13 @@ export interface SiteUser {
   status: 'active' | 'inactive';
   initials: string | null;
   color: string | null;
+  lastLogin: string | null;
+}
+
+export interface InvitationInput {
+  email: string;
+  role: UserRole;
+  workshop: string;
 }
 
 export interface InterventionInput {
@@ -178,5 +186,12 @@ export const api = {
   },
   users: {
     list: () => request<SiteUser[]>('/users'),
+    update: (id: string, body: { role?: UserRole; status?: 'active' | 'inactive' }) =>
+      request<SiteUser>(`/users/${id}`, { method: 'PATCH', body: JSON.stringify(body) }),
+    invitations: {
+      list: () => request<Invitation[]>('/users/invitations'),
+      create: (body: InvitationInput) =>
+        request<Invitation>('/users/invitations', { method: 'POST', body: JSON.stringify(body) }),
+    },
   },
 };
