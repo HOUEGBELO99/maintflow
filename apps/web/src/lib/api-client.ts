@@ -1,4 +1,12 @@
-import type { DashboardKpis, Fault, Intervention, Machine } from '@maintflow/shared';
+import type {
+  DashboardKpis,
+  Fault,
+  FaultSeverity,
+  FaultStatus,
+  FaultType,
+  Intervention,
+  Machine,
+} from '@maintflow/shared';
 
 import { getAccessToken, type SessionUser } from './store/auth';
 
@@ -52,6 +60,20 @@ export interface MachineInput {
   criticality: Machine['criticality'];
 }
 
+export interface FaultInput {
+  machineId: string;
+  type: FaultType;
+  description: string;
+  severity: FaultSeverity;
+}
+export interface FaultUpdate {
+  status?: FaultStatus;
+  severity?: FaultSeverity;
+  type?: FaultType;
+  description?: string;
+  rootCause?: string;
+}
+
 export const api = {
   auth: {
     devLogin: (email: string) =>
@@ -80,6 +102,12 @@ export const api = {
   },
   faults: {
     list: () => request<Fault[]>('/faults'),
+    create: (body: FaultInput) =>
+      request<Fault>('/faults', { method: 'POST', body: JSON.stringify(body) }),
+    update: (id: string, body: FaultUpdate) =>
+      request<Fault>(`/faults/${id}`, { method: 'PATCH', body: JSON.stringify(body) }),
+    remove: (id: string) =>
+      request<{ id: string; deleted: boolean }>(`/faults/${id}`, { method: 'DELETE' }),
   },
   interventions: {
     list: () => request<Intervention[]>('/interventions'),
