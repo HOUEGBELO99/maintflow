@@ -20,6 +20,7 @@ const PATHS: Record<string, string> = {
   check: 'M20 6 9 17l-5-5',
   bolt: 'M13 2 3 14h9l-1 8 10-12h-9l1-8z',
   arrowRight: 'M5 12h14M12 5l7 7-7 7',
+  download: 'M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3',
 };
 
 export function Icon({ name, size = 18, ...props }: { name: string; size?: number } & SVGProps<SVGSVGElement>) {
