@@ -112,22 +112,33 @@ async function main(): Promise<void> {
 
   // ── Preventive plan rules (PM-01..PM-05) ────────────────────────────────────
   const planRules = [
-    { id: '00000000-0000-4000-a000-000000000601', code: 'PM-01', title: 'Visite trimestrielle compresseur', machine: 'MCH-001', everyWeeks: 12, by: 'L. Moreau', duration: 2, nextDue: '2026-05-23' },
-    { id: '00000000-0000-4000-a000-000000000602', code: 'PM-02', title: 'Graissage broche tour CNC', machine: 'MCH-003', everyWeeks: 4, by: 'J. Petit', duration: 2, nextDue: '2026-05-25' },
-    { id: '00000000-0000-4000-a000-000000000603', code: 'PM-03', title: 'Calibration robot soudure', machine: 'MCH-007', everyWeeks: 8, by: 'T. Khan', duration: 4, nextDue: '2026-05-26' },
-    { id: '00000000-0000-4000-a000-000000000604', code: 'PM-04', title: 'Contrôle annuel moteur ventilation', machine: 'MCH-006', everyWeeks: 52, by: 'L. Moreau', duration: 1, nextDue: '2026-06-12' },
-    { id: '00000000-0000-4000-a000-000000000605', code: 'PM-05', title: 'Lubrification pont roulant', machine: 'MCH-009', everyWeeks: 4, by: 'S. Diallo', duration: 1, nextDue: '2026-05-28' },
+    { id: '00000000-0000-4000-a000-000000000601', code: 'PM-01', title: 'Visite trimestrielle compresseur', machine: 'MCH-001', everyWeeks: 12, by: 'L. Moreau', duration: 2, nextDue: '2026-05-23', reminderLead: 2 },
+    { id: '00000000-0000-4000-a000-000000000602', code: 'PM-02', title: 'Graissage broche tour CNC', machine: 'MCH-003', everyWeeks: 4, by: 'J. Petit', duration: 2, nextDue: '2026-05-25', reminderLead: 2 },
+    { id: '00000000-0000-4000-a000-000000000603', code: 'PM-03', title: 'Calibration robot soudure', machine: 'MCH-007', everyWeeks: 8, by: 'T. Khan', duration: 4, nextDue: '2026-05-26', reminderLead: 3 },
+    { id: '00000000-0000-4000-a000-000000000604', code: 'PM-04', title: 'Contrôle annuel moteur ventilation', machine: 'MCH-006', everyWeeks: 52, by: 'L. Moreau', duration: 1, nextDue: '2026-06-12', reminderLead: 7 },
+    { id: '00000000-0000-4000-a000-000000000605', code: 'PM-05', title: 'Lubrification pont roulant', machine: 'MCH-009', everyWeeks: 4, by: 'S. Diallo', duration: 1, nextDue: '2026-05-28', reminderLead: 2 },
   ] as const;
   const pid = (code: string): string => planRules.find((p) => p.code === code)!.id;
   for (const p of planRules) {
-    await prisma.planRule.upsert({
-      where: { id: p.id },
-      update: {},
-      create: {
-        id: p.id, siteId: site.id, machineId: mid(p.machine), title: p.title, everyWeeks: p.everyWeeks,
-        technicianId: U[p.by], duration: p.duration, nextDue: new Date(p.nextDue),
-      },
-    });
+    const data = {
+      siteId: site.id, code: p.code, machineId: mid(p.machine), title: p.title, everyWeeks: p.everyWeeks,
+      technicianId: U[p.by], duration: p.duration, nextDue: new Date(p.nextDue), reminderLead: p.reminderLead, active: true,
+    };
+    await prisma.planRule.upsert({ where: { id: p.id }, update: data, create: { id: p.id, ...data } });
+  }
+
+  // ── Automatic reminders (history of sent/done notifications) ─────────────────
+  const reminders = [
+    { id: '00000000-0000-4000-a000-000000000714', rule: 'PM-02', title: 'Graissage broche tour CNC', machine: 'MCH-003', by: 'J. Petit', dueDate: '2026-05-25', firedAt: '2026-05-23T08:00:00', lead: 2, channel: 'Notification + e-mail', status: 'sent' },
+    { id: '00000000-0000-4000-a000-000000000713', rule: 'PM-01', title: 'Visite trimestrielle compresseur', machine: 'MCH-001', by: 'L. Moreau', dueDate: '2026-05-23', firedAt: '2026-05-21T08:00:00', lead: 2, channel: 'Notification + e-mail', status: 'sent' },
+    { id: '00000000-0000-4000-a000-000000000712', rule: 'PM-04', title: 'Contrôle annuel moteur ventilation', machine: 'MCH-006', by: 'L. Moreau', dueDate: '2026-05-12', firedAt: '2026-05-05T08:00:00', lead: 7, channel: 'Notification', status: 'done' },
+  ] as const;
+  for (const r of reminders) {
+    const data = {
+      siteId: site.id, ruleId: pid(r.rule), title: r.title, machineId: mid(r.machine), technicianId: U[r.by],
+      dueDate: new Date(r.dueDate), firedAt: new Date(r.firedAt), lead: r.lead, channel: r.channel, status: r.status,
+    };
+    await prisma.reminder.upsert({ where: { id: r.id }, update: data, create: { id: r.id, ...data } });
   }
 
   // ── Interventions (I-1071..I-1082) ──────────────────────────────────────────
@@ -190,6 +201,7 @@ async function main(): Promise<void> {
     machines: machines.length,
     faults: faults.length,
     planRules: planRules.length,
+    reminders: reminders.length,
     interventions: interventions.length,
     parts: parts.length,
   });

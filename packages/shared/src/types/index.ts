@@ -11,6 +11,7 @@ import type {
   InterventionStatus,
   MachineState,
   NotificationLevel,
+  ReminderStatus,
   UserRole,
 } from '../enums/index.js';
 
@@ -96,12 +97,41 @@ export interface Part {
 
 export interface PlanRule {
   id: string;
+  /** Human-readable reference, e.g. "PM-01". */
+  code: string;
   title: string;
   machineId: string;
   everyWeeks: number;
-  technicianId: string;
+  technicianId: string | null;
   duration: number;
   nextDue: string;
+  /** Days before `nextDue` the reminder fires. */
+  reminderLead: number;
+  active: boolean;
+}
+
+export interface Reminder {
+  id: string;
+  ruleId: string;
+  title: string;
+  machineId: string;
+  technicianId: string | null;
+  dueDate: string;
+  firedAt: string;
+  lead: number;
+  channel: string;
+  status: ReminderStatus;
+}
+
+/** Computed view of an active rule's next reminder window (GET /planning/upcoming). */
+export interface UpcomingReminder {
+  rule: PlanRule;
+  /** ISO date the reminder will fire (nextDue − reminderLead days). */
+  remindOn: string;
+  /** Whole days from the reference date until the maintenance is due. */
+  dueIn: number;
+  /** Whole days from the reference date until the reminder fires (≤0 = send now). */
+  remindIn: number;
 }
 
 export interface User {
