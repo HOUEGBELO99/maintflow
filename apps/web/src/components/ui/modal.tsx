@@ -24,6 +24,7 @@ export function Modal({
   subtitle,
   footer,
   children,
+  wide,
 }: {
   open: boolean;
   onClose: () => void;
@@ -31,6 +32,7 @@ export function Modal({
   subtitle?: string;
   footer?: ReactNode;
   children: ReactNode;
+  wide?: boolean;
 }) {
   useEffect(() => {
     if (!open) return;
@@ -48,7 +50,7 @@ export function Modal({
       onClick={onClose}
     >
       <div
-        className="flex max-h-[90vh] w-full max-w-[560px] flex-col overflow-hidden rounded-[20px] bg-surface shadow-[var(--shadow-md)]"
+        className={`flex max-h-[90vh] w-full ${wide ? 'max-w-[680px]' : 'max-w-[560px]'} flex-col overflow-hidden rounded-[20px] bg-surface shadow-[var(--shadow-md)]`}
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between border-b border-line px-[22px] pb-3.5 pt-[18px]">

@@ -8,6 +8,7 @@ import type {
   InterventionKind,
   InterventionStatus,
   Machine,
+  Technician,
   UserRole,
 } from '@maintflow/shared';
 
@@ -147,6 +148,9 @@ export const api = {
       request<Intervention>(`/interventions/${id}`, { method: 'PATCH', body: JSON.stringify(body) }),
     remove: (id: string) =>
       request<{ id: string; deleted: boolean }>(`/interventions/${id}`, { method: 'DELETE' }),
+  },
+  technicians: {
+    list: () => request<Technician[]>('/technicians'),
   },
   users: {
     list: () => request<SiteUser[]>('/users'),
