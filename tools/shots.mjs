@@ -30,7 +30,11 @@ try {
   await page.screenshot({ path: `${out}/proto-dashboard.png` });
   console.log('✓ proto-dashboard.png');
 
-  for (const label of ['Machines', 'Pannes', 'Interventions']) {
+  const protoNav = [
+    'Machines', 'Pannes', 'Interventions', 'Planification',
+    'Techniciens', 'Historique', 'Utilisateurs', 'Paramètres',
+  ];
+  for (const label of protoNav) {
     try {
       await page.getByText(label, { exact: true }).first().click();
       await page.waitForTimeout(1500);
