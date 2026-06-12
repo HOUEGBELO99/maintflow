@@ -8,7 +8,10 @@ import type {
   InterventionKind,
   InterventionStatus,
   Machine,
+  PlanRule,
+  Reminder,
   Technician,
+  UpcomingReminder,
   UserRole,
 } from '@maintflow/shared';
 
@@ -76,6 +79,16 @@ export interface FaultUpdate {
   type?: FaultType;
   description?: string;
   rootCause?: string;
+}
+
+export interface PlanRuleInput {
+  title: string;
+  machineId: string;
+  technicianId: string;
+  everyWeeks: number;
+  duration: number;
+  nextDue: string;
+  reminderLead: number;
 }
 
 export interface SiteUser {
@@ -151,6 +164,17 @@ export const api = {
   },
   technicians: {
     list: () => request<Technician[]>('/technicians'),
+  },
+  planning: {
+    rules: () => request<PlanRule[]>('/planning/rules'),
+    reminders: () => request<Reminder[]>('/planning/reminders'),
+    upcoming: () => request<UpcomingReminder[]>('/planning/upcoming'),
+    createRule: (body: PlanRuleInput) =>
+      request<PlanRule>('/planning/rules', { method: 'POST', body: JSON.stringify(body) }),
+    updateRule: (id: string, body: Partial<PlanRuleInput> & { active?: boolean }) =>
+      request<PlanRule>(`/planning/rules/${id}`, { method: 'PATCH', body: JSON.stringify(body) }),
+    schedule: (id: string) =>
+      request<PlanRule>(`/planning/rules/${id}/schedule`, { method: 'POST' }),
   },
   users: {
     list: () => request<SiteUser[]>('/users'),
