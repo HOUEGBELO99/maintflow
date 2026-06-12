@@ -14,7 +14,7 @@ export class DashboardService {
   constructor(private readonly prisma: PrismaService) {}
 
   async getKpis(siteId: string): Promise<DashboardKpis> {
-    const [machines, faults, interventions, parts] = await Promise.all([
+    const [machines, faults, interventions, parts, availableTechnicians] = await Promise.all([
       this.prisma.machine.findMany({ where: { siteId }, select: { state: true, criticality: true } }),
       this.prisma.fault.findMany({ where: { siteId }, select: { status: true, severity: true } }),
       this.prisma.intervention.findMany({
@@ -22,6 +22,7 @@ export class DashboardService {
         select: { status: true, kind: true, duration: true, actualDuration: true },
       }),
       this.prisma.part.findMany({ where: { siteId }, select: { stock: true, min: true } }),
+      this.prisma.technician.count({ where: { available: true, user: { siteId } } }),
     ]);
 
     const activeFaults = faults.filter((f) => f.status !== FaultStatus.RESOLVED);
@@ -48,6 +49,7 @@ export class DashboardService {
       inProgressInterventions: interventions.filter((i) => i.status === InterventionStatus.IN_PROGRESS).length,
       plannedInterventions: interventions.filter((i) => i.status === InterventionStatus.PLANNED).length,
       lowStock: parts.filter((p) => p.stock < p.min).length,
+      availableTechnicians,
       healthScore: this.healthScore(machines),
       mttr,
     };
@@ -87,8 +89,11 @@ export class DashboardService {
       .sort((a, b) => b.count - a.count);
   }
 
-  /** Machines with the most faults (all-time), with their name. */
-  async topFaultMachines(siteId: string, n = 5): Promise<{ machineId: string; name: string; count: number }[]> {
+  /** Machines with the most faults (all-time), with their code + name. */
+  async topFaultMachines(
+    siteId: string,
+    n = 5,
+  ): Promise<{ machineId: string; code: string; name: string; count: number }[]> {
     const grouped = await this.prisma.fault.groupBy({
       by: ['machineId'],
       where: { siteId },
@@ -98,12 +103,13 @@ export class DashboardService {
     });
     const machines = await this.prisma.machine.findMany({
       where: { siteId, id: { in: grouped.map((g) => g.machineId) } },
-      select: { id: true, name: true },
+      select: { id: true, code: true, name: true },
     });
-    const nameById = new Map(machines.map((m) => [m.id, m.name]));
+    const byId = new Map(machines.map((m) => [m.id, m]));
     return grouped.map((g) => ({
       machineId: g.machineId,
-      name: nameById.get(g.machineId) ?? '—',
+      code: byId.get(g.machineId)?.code ?? '—',
+      name: byId.get(g.machineId)?.name ?? '—',
       count: g._count._all,
     }));
   }

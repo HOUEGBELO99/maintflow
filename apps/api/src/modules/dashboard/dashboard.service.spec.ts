@@ -10,6 +10,7 @@ describe('DashboardService', () => {
     fault: { findMany: jest.fn(), groupBy: jest.fn() },
     intervention: { findMany: jest.fn() },
     part: { findMany: jest.fn() },
+    technician: { count: jest.fn() },
   };
 
   beforeEach(async () => {
@@ -41,6 +42,7 @@ describe('DashboardService', () => {
       { stock: 0, min: 2 },
       { stock: 9, min: 5 },
     ]);
+    prisma.technician.count.mockResolvedValue(3);
 
     const kpis = await service.getKpis('site-1');
 
@@ -70,6 +72,7 @@ describe('DashboardService', () => {
       { status: 'planned', kind: 'corrective', duration: 4, actualDuration: null },
     ]);
     prisma.part.findMany.mockResolvedValue([]);
+    prisma.technician.count.mockResolvedValue(0);
 
     const kpis = await service.getKpis('site-1');
     expect(kpis.mttr).toBeNull();

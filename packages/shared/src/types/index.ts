@@ -126,6 +126,7 @@ export interface DashboardKpis {
   inProgressInterventions: number;
   plannedInterventions: number;
   lowStock: number;
+  availableTechnicians: number;
   healthScore: number;
   mttr: number | null;
 }
