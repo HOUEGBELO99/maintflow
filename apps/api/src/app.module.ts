@@ -10,10 +10,12 @@ import { AuthModule } from './modules/auth/auth.module';
 import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
 import { PermissionsGuard } from './common/guards/permissions.guard';
 import { MachinesModule } from './modules/machines/machines.module';
+import { FaultsModule } from './modules/faults/faults.module';
+import { InterventionsModule } from './modules/interventions/interventions.module';
+import { DashboardModule } from './modules/dashboard/dashboard.module';
 // import the remaining feature modules as they are implemented:
-// FaultsModule, InterventionsModule, PlanningModule, PartsModule,
-// TechniciansModule, UsersModule, ReportsModule, NotificationsModule,
-// FilesModule, DashboardModule
+// PlanningModule, PartsModule, TechniciansModule, UsersModule,
+// ReportsModule, NotificationsModule, FilesModule
 
 @Module({
   imports: [
@@ -39,6 +41,9 @@ import { MachinesModule } from './modules/machines/machines.module';
     PrismaModule,
     AuthModule,
     MachinesModule,
+    FaultsModule,
+    InterventionsModule,
+    DashboardModule,
   ],
   providers: [
     // Auth is ON by default everywhere; opt out per-route with @Public().
