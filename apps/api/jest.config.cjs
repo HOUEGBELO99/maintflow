@@ -10,5 +10,8 @@ module.exports = {
   moduleNameMapper: {
     '^@maintflow/shared$': '<rootDir>/../../../packages/shared/src/index.ts',
     '^@/(.*)$': '<rootDir>/$1',
+    // The shared package uses NodeNext '.js' specifiers in its TS source; strip
+    // them so ts-jest resolves the actual '.ts' files.
+    '^(\\.{1,2}/.*)\\.js$': '$1',
   },
 };
