@@ -55,7 +55,9 @@ export const api = {
     kpis: () => request<DashboardKpis>('/dashboard/kpis'),
     faultsByType: () => request<{ type: string; count: number }[]>('/dashboard/faults-by-type'),
     topFaultMachines: () =>
-      request<{ machineId: string; name: string; count: number }[]>('/dashboard/top-fault-machines'),
+      request<{ machineId: string; code: string; name: string; count: number }[]>(
+        '/dashboard/top-fault-machines',
+      ),
   },
   machines: {
     list: () => request<Machine[]>('/machines'),
