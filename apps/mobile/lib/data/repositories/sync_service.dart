@@ -35,6 +35,14 @@ class SyncService {
     await drain();
   }
 
+  /// Report a new fault offline-first: queue the POST and try to flush. The
+  /// server assigns the id, so nothing is cached locally; if offline the op is
+  /// retained and replayed on reconnect. [body] is the API request body.
+  Future<void> reportFault(Map<String, dynamic> body) async {
+    await _db.enqueueOp('POST', '/faults', jsonEncode(body));
+    await drain();
+  }
+
   /// Replay queued ops in order. Stops at the first network failure (kept for a
   /// later retry); drops ops the server rejects (4xx/5xx) to avoid poisoning.
   Future<void> drain() async {

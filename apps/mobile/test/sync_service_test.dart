@@ -101,4 +101,22 @@ void main() {
     await SyncService(db, _dio(_OkAdapter())).drain();
     expect(await db.pendingOps(), isEmpty);
   });
+
+  test('reportFault queues a POST /faults and flushes it when online',
+      () async {
+    await SyncService(db, _dio(_OkAdapter())).reportFault(
+      <String, dynamic>{'machineId': 'm1', 'type': 'electrique'},
+    );
+    expect(await db.pendingOps(), isEmpty); // flushed
+  });
+
+  test('reportFault retains the POST while offline', () async {
+    await SyncService(db, _dio(_OfflineAdapter())).reportFault(
+      <String, dynamic>{'machineId': 'm1', 'type': 'electrique'},
+    );
+    final ops = await db.pendingOps();
+    expect(ops, hasLength(1));
+    expect(ops.single.method, 'POST');
+    expect(ops.single.path, '/faults');
+  });
 }

@@ -79,6 +79,10 @@ class _ScanScreenState extends ConsumerState<ScanScreen>
           Navigator.of(context).pop();
           context.go('/missions/$id');
         },
+        onReportFault: (machineId) {
+          Navigator.of(context).pop();
+          context.push('/report?machineId=$machineId');
+        },
         onDismiss: () => Navigator.of(context).pop(),
       ),
     );
@@ -482,6 +486,7 @@ class ScanResultSheet extends ConsumerWidget {
     required this.raw,
     required this.machine,
     required this.onOpenIntervention,
+    required this.onReportFault,
     required this.onDismiss,
     super.key,
   });
@@ -489,6 +494,7 @@ class ScanResultSheet extends ConsumerWidget {
   final String raw;
   final Machine? machine;
   final ValueChanged<String> onOpenIntervention;
+  final ValueChanged<String> onReportFault;
   final VoidCallback onDismiss;
 
   @override
@@ -523,7 +529,11 @@ class ScanResultSheet extends ConsumerWidget {
           if (m == null)
             _NotFound(raw: raw)
           else
-            _Found(machine: m, onOpenIntervention: onOpenIntervention),
+            _Found(
+              machine: m,
+              onOpenIntervention: onOpenIntervention,
+              onReportFault: onReportFault,
+            ),
           const SizedBox(height: 14),
           TextButton(
             onPressed: onDismiss,
@@ -536,10 +546,15 @@ class ScanResultSheet extends ConsumerWidget {
 }
 
 class _Found extends ConsumerWidget {
-  const _Found({required this.machine, required this.onOpenIntervention});
+  const _Found({
+    required this.machine,
+    required this.onOpenIntervention,
+    required this.onReportFault,
+  });
 
   final Machine machine;
   final ValueChanged<String> onOpenIntervention;
+  final ValueChanged<String> onReportFault;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -651,6 +666,22 @@ class _Found extends ConsumerWidget {
               style: TextStyle(color: AppColors.mute, fontSize: 12.5),
             ),
           ),
+        const SizedBox(height: 8),
+        TextButton.icon(
+          onPressed: () => onReportFault(machine.id),
+          icon: const Icon(
+            Icons.report_problem_outlined,
+            size: 18,
+            color: AppColors.crit,
+          ),
+          label: const Text(
+            'Signaler une panne',
+            style: TextStyle(
+              color: AppColors.crit,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ),
       ],
     );
   }
