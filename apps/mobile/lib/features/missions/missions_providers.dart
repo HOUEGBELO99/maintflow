@@ -22,6 +22,17 @@ final missionsProvider = StreamProvider.autoDispose<List<Intervention>>((ref) {
       );
 });
 
+/// A single cached mission by id (derived from [missionsProvider]).
+final missionByIdProvider =
+    Provider.autoDispose.family<Intervention?, String>((ref, id) {
+  final missions = ref.watch(missionsProvider).valueOrNull;
+  if (missions == null) return null;
+  for (final m in missions) {
+    if (m.id == id) return m;
+  }
+  return null;
+});
+
 /// Machines indexed by id (offline cache + background refresh), for resolving
 /// names/workshops on mission rows.
 final machinesByIdProvider =

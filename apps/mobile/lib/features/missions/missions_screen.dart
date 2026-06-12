@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import 'package:maintflow_mobile/core/network/connectivity.dart';
 import 'package:maintflow_mobile/core/theme/app_theme.dart';
@@ -148,6 +149,8 @@ class MissionsScreen extends ConsumerWidget {
                             itemBuilder: (_, i) => _MissionRow(
                               mission: missions[i],
                               machine: machines[missions[i].machineId],
+                              onTap: () =>
+                                  context.push('/missions/${missions[i].id}'),
                             ),
                           ),
                   ),
@@ -238,10 +241,11 @@ class _ProgressBlock extends StatelessWidget {
 }
 
 class _MissionRow extends StatelessWidget {
-  const _MissionRow({required this.mission, this.machine});
+  const _MissionRow({required this.mission, this.machine, this.onTap});
 
   final Intervention mission;
   final Machine? machine;
+  final VoidCallback? onTap;
 
   AppPill _statusPill() {
     switch (mission.status) {
@@ -268,86 +272,90 @@ class _MissionRow extends StatelessWidget {
         ? mission.machineId
         : '${machine!.code} · ${machine!.workshop}';
 
-    return Opacity(
-      opacity: isDone ? 0.55 : 1,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 14),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Container(
-              width: 54,
-              padding: const EdgeInsets.symmetric(vertical: 8),
-              decoration: BoxDecoration(
-                color: isNow ? AppColors.brandDeep : AppColors.bg,
-                border: Border.all(
-                  color: isNow ? AppColors.brandDeep : AppColors.line,
+    return InkWell(
+      onTap: onTap,
+      child: Opacity(
+        opacity: isDone ? 0.55 : 1,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 14),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                width: 54,
+                padding: const EdgeInsets.symmetric(vertical: 8),
+                decoration: BoxDecoration(
+                  color: isNow ? AppColors.brandDeep : AppColors.bg,
+                  border: Border.all(
+                    color: isNow ? AppColors.brandDeep : AppColors.line,
+                  ),
+                  borderRadius: BorderRadius.circular(10),
                 ),
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: Column(
-                children: [
-                  Text(
-                    _fmtDate(mission.scheduledFor),
-                    style: TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w700,
-                      letterSpacing: -0.2,
-                      height: 1,
-                      color: isNow ? Colors.white : AppColors.ink,
-                      fontFeatures: const [FontFeature.tabularFigures()],
-                    ),
-                  ),
-                  const SizedBox(height: 3),
-                  Text(
-                    _fmtHours(mission.duration),
-                    style: TextStyle(
-                      fontSize: 10,
-                      color: isNow ? AppColors.brandBright : AppColors.mute,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(width: 14),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      _statusPill(),
-                      const SizedBox(width: 6),
-                      Text(
-                        ref,
-                        style: const TextStyle(
-                          fontSize: 10,
-                          color: AppColors.faint,
-                          fontFeatures: [FontFeature.tabularFigures()],
-                        ),
+                child: Column(
+                  children: [
+                    Text(
+                      _fmtDate(mission.scheduledFor),
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: -0.2,
+                        height: 1,
+                        color: isNow ? Colors.white : AppColors.ink,
+                        fontFeatures: const [FontFeature.tabularFigures()],
                       ),
-                    ],
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    mission.description,
-                    style: TextStyle(
-                      fontSize: 14.5,
-                      fontWeight: FontWeight.w600,
-                      height: 1.3,
-                      color: AppColors.text,
-                      decoration: isDone ? TextDecoration.lineThrough : null,
                     ),
-                  ),
-                  const SizedBox(height: 3),
-                  Text(
-                    subtitle,
-                    style: const TextStyle(fontSize: 12, color: AppColors.mute),
-                  ),
-                ],
+                    const SizedBox(height: 3),
+                    Text(
+                      _fmtHours(mission.duration),
+                      style: TextStyle(
+                        fontSize: 10,
+                        color: isNow ? AppColors.brandBright : AppColors.mute,
+                      ),
+                    ),
+                  ],
+                ),
               ),
-            ),
-          ],
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        _statusPill(),
+                        const SizedBox(width: 6),
+                        Text(
+                          ref,
+                          style: const TextStyle(
+                            fontSize: 10,
+                            color: AppColors.faint,
+                            fontFeatures: [FontFeature.tabularFigures()],
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      mission.description,
+                      style: TextStyle(
+                        fontSize: 14.5,
+                        fontWeight: FontWeight.w600,
+                        height: 1.3,
+                        color: AppColors.text,
+                        decoration: isDone ? TextDecoration.lineThrough : null,
+                      ),
+                    ),
+                    const SizedBox(height: 3),
+                    Text(
+                      subtitle,
+                      style:
+                          const TextStyle(fontSize: 12, color: AppColors.mute),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
