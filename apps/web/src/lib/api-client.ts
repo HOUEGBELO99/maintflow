@@ -42,6 +42,16 @@ export interface DevLoginResult {
   user: SessionUser;
 }
 
+export interface MachineInput {
+  code: string;
+  name: string;
+  type: string;
+  workshop: string;
+  installedAt: string;
+  state: Machine['state'];
+  criticality: Machine['criticality'];
+}
+
 export const api = {
   auth: {
     devLogin: (email: string) =>
@@ -61,6 +71,12 @@ export const api = {
   },
   machines: {
     list: () => request<Machine[]>('/machines'),
+    create: (body: MachineInput) =>
+      request<Machine>('/machines', { method: 'POST', body: JSON.stringify(body) }),
+    update: (id: string, body: Partial<MachineInput>) =>
+      request<Machine>(`/machines/${id}`, { method: 'PATCH', body: JSON.stringify(body) }),
+    remove: (id: string) =>
+      request<{ id: string; deleted: boolean }>(`/machines/${id}`, { method: 'DELETE' }),
   },
   faults: {
     list: () => request<Fault[]>('/faults'),

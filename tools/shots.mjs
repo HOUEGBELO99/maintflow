@@ -55,6 +55,17 @@ try {
   await page.waitForTimeout(5000);
   await page.screenshot({ path: `${out}/app-dashboard.png`, fullPage: true });
   console.log('  url after login:', page.url());
+
+  for (const route of ['machines', 'faults', 'interventions']) {
+    try {
+      await page.goto(`http://localhost:3000/${route}`, { waitUntil: 'networkidle', timeout: 30000 });
+      await page.waitForTimeout(1500);
+      await page.screenshot({ path: `${out}/app-${route}.png`, fullPage: true });
+      console.log(`✓ app-${route}.png`);
+    } catch (e) {
+      console.log(`✗ app ${route}:`, e.message);
+    }
+  }
 } catch (e) {
   console.log('✗ app:', e.message);
 }
