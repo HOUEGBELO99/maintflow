@@ -12,6 +12,7 @@ import 'package:maintflow_mobile/data/repositories/missions_repository.dart';
 import 'package:maintflow_mobile/features/auth/auth_controller.dart';
 import 'package:maintflow_mobile/features/missions/missions_providers.dart';
 import 'package:maintflow_mobile/features/shell/bottom_tabs.dart';
+import 'package:maintflow_mobile/features/shell/tab_nav.dart';
 
 /// "Mes missions" — the technician's interventions, read offline-first from the
 /// Drift cache and pull-to-refreshed from the API. Tapping a row will open its
@@ -157,9 +158,7 @@ class MissionsScreen extends ConsumerWidget {
                 ),
                 BottomTabs(
                   active: 'missions',
-                  onTap: (key) {
-                    if (key == 'scan') context.push('/scan');
-                  },
+                  onTap: (key) => onTabTap(context, key),
                 ),
               ],
             );

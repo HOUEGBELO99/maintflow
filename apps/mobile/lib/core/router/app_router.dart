@@ -4,6 +4,8 @@ import 'package:go_router/go_router.dart';
 
 import 'package:maintflow_mobile/features/auth/auth_controller.dart';
 import 'package:maintflow_mobile/features/auth/login_screen.dart';
+import 'package:maintflow_mobile/features/machines/home_screen.dart';
+import 'package:maintflow_mobile/features/machines/machine_detail_screen.dart';
 import 'package:maintflow_mobile/features/missions/mission_detail_screen.dart';
 import 'package:maintflow_mobile/features/missions/missions_screen.dart';
 import 'package:maintflow_mobile/features/report/report_screen.dart';
@@ -31,6 +33,12 @@ final appRouterProvider = Provider<GoRouter>((ref) {
     },
     routes: [
       GoRoute(path: '/login', builder: (context, state) => const LoginScreen()),
+      GoRoute(path: '/home', builder: (context, state) => const HomeScreen()),
+      GoRoute(
+        path: '/machines/:id',
+        builder: (context, state) =>
+            MachineDetailScreen(machineId: state.pathParameters['id']!),
+      ),
       GoRoute(
         path: '/missions',
         builder: (context, state) => const MissionsScreen(),
