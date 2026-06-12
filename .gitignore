@@ -55,3 +55,6 @@ apps/mobile/**/*.mocks.dart
 # Supabase
 supabase/.branches/
 supabase/.temp/
+
+# Visual-diff screenshots (throwaway)
+apps/docs/design/_shots/
