@@ -155,7 +155,12 @@ class MissionsScreen extends ConsumerWidget {
                           ),
                   ),
                 ),
-                BottomTabs(active: 'missions', onTap: (_) {}),
+                BottomTabs(
+                  active: 'missions',
+                  onTap: (key) {
+                    if (key == 'scan') context.push('/scan');
+                  },
+                ),
               ],
             );
           },

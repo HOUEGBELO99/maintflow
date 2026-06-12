@@ -6,6 +6,7 @@ import 'package:maintflow_mobile/features/auth/auth_controller.dart';
 import 'package:maintflow_mobile/features/auth/login_screen.dart';
 import 'package:maintflow_mobile/features/missions/mission_detail_screen.dart';
 import 'package:maintflow_mobile/features/missions/missions_screen.dart';
+import 'package:maintflow_mobile/features/scan/scan_screen.dart';
 
 /// App router with an auth gate. Mirrors the prototype technician flow:
 /// login → missions → detail → checklist → scan → report → close.
@@ -40,7 +41,8 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           ),
         ],
       ),
-      // Still to come: /checklist, /scan, /report, /close, /profile
+      GoRoute(path: '/scan', builder: (context, state) => const ScanScreen()),
+      // Still to come: /checklist, /report, /close, /profile
     ],
     errorBuilder: (context, state) => Scaffold(
       body: Center(child: Text('Route introuvable: ${state.uri}')),
