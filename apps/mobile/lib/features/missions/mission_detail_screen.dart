@@ -7,7 +7,15 @@ import 'package:maintflow_mobile/core/widgets/app_pill.dart';
 import 'package:maintflow_mobile/data/models/enums.dart';
 import 'package:maintflow_mobile/data/models/intervention.dart';
 import 'package:maintflow_mobile/data/models/machine.dart';
+import 'package:maintflow_mobile/data/repositories/sync_service.dart';
 import 'package:maintflow_mobile/features/missions/missions_providers.dart';
+
+const _statusWire = {
+  InterventionStatus.planned: 'planned',
+  InterventionStatus.inProgress: 'in_progress',
+  InterventionStatus.completed: 'completed',
+  InterventionStatus.cancelled: 'cancelled',
+};
 
 const _months = [
   'janv.',
@@ -44,8 +52,9 @@ AppPill _statusPill(Intervention m) {
   }
 }
 
-/// Mission (work-order) detail — read-only for now. Toggling the checklist and
-/// changing status land with the offline write path.
+/// Mission (work-order) detail. The checklist and status changes are written
+/// offline-first via [SyncService] — the cache updates instantly and the API
+/// call is queued for replay.
 class MissionDetailScreen extends ConsumerWidget {
   const MissionDetailScreen({required this.missionId, super.key});
 
@@ -56,6 +65,24 @@ class MissionDetailScreen extends ConsumerWidget {
     final mission = ref.watch(missionByIdProvider(missionId));
     final machine =
         ref.watch(machinesByIdProvider).valueOrNull?[mission?.machineId];
+
+    void toggle(int index) {
+      if (mission == null) return;
+      final next = [...mission.checklist];
+      next[index] = next[index].copyWith(done: !next[index].done);
+      final updated = mission.copyWith(checklist: next);
+      ref.read(syncServiceProvider).mutateIntervention(updated, {
+        'checklist': next.map((c) => c.toJson()).toList(),
+      });
+    }
+
+    void setStatus(InterventionStatus status) {
+      if (mission == null) return;
+      final updated = mission.copyWith(status: status);
+      ref.read(syncServiceProvider).mutateIntervention(updated, {
+        'status': _statusWire[status],
+      });
+    }
 
     return Scaffold(
       backgroundColor: AppColors.bg,
@@ -83,20 +110,36 @@ class MissionDetailScreen extends ConsumerWidget {
                 style: TextStyle(color: AppColors.mute),
               ),
             )
-          : _Body(mission: mission, machine: machine),
+          : _Body(
+              mission: mission,
+              machine: machine,
+              onToggle: toggle,
+              onStatus: setStatus,
+            ),
     );
   }
 }
 
 class _Body extends StatelessWidget {
-  const _Body({required this.mission, this.machine});
+  const _Body({
+    required this.mission,
+    required this.onToggle,
+    required this.onStatus,
+    this.machine,
+  });
 
   final Intervention mission;
   final Machine? machine;
+  final void Function(int index) onToggle;
+  final void Function(InterventionStatus status) onStatus;
 
   @override
   Widget build(BuildContext context) {
     final done = mission.checklist.where((c) => c.done).length;
+    final editable = mission.status == InterventionStatus.planned ||
+        mission.status == InterventionStatus.inProgress;
+    final allDone =
+        mission.checklist.isNotEmpty && done == mission.checklist.length;
     return ListView(
       padding: const EdgeInsets.fromLTRB(22, 4, 22, 28),
       children: [
@@ -168,12 +211,87 @@ class _Body extends StatelessWidget {
             ),
           )
         else
-          for (final item in mission.checklist)
+          for (var i = 0; i < mission.checklist.length; i++)
             Padding(
               padding: const EdgeInsets.only(bottom: 8),
-              child: _ChecklistRow(label: item.label, done: item.done),
+              child: _ChecklistRow(
+                label: mission.checklist[i].label,
+                done: mission.checklist[i].done,
+                onTap: editable ? () => onToggle(i) : null,
+              ),
             ),
+        const SizedBox(height: 14),
+        _ActionButton(
+          status: mission.status,
+          allDone: allDone,
+          onStatus: onStatus,
+        ),
       ],
+    );
+  }
+}
+
+/// Primary action for the work order: start it (planned), finish it (in progress
+/// once the checklist is done), or nothing once completed/cancelled.
+class _ActionButton extends StatelessWidget {
+  const _ActionButton({
+    required this.status,
+    required this.allDone,
+    required this.onStatus,
+  });
+
+  final InterventionStatus status;
+  final bool allDone;
+  final void Function(InterventionStatus status) onStatus;
+
+  @override
+  Widget build(BuildContext context) {
+    if (status == InterventionStatus.planned) {
+      return _Cta(
+        label: 'Démarrer l’intervention',
+        onTap: () => onStatus(InterventionStatus.inProgress),
+      );
+    }
+    if (status == InterventionStatus.inProgress) {
+      return _Cta(
+        label:
+            allDone ? 'Terminer l’intervention' : 'Validez toutes les tâches',
+        onTap: allDone ? () => onStatus(InterventionStatus.completed) : null,
+      );
+    }
+    return const SizedBox.shrink();
+  }
+}
+
+class _Cta extends StatelessWidget {
+  const _Cta({required this.label, this.onTap});
+
+  final String label;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final enabled = onTap != null;
+    return Material(
+      color: enabled ? AppColors.brandDeep : AppColors.faint,
+      borderRadius: BorderRadius.circular(100),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(100),
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 15),
+          child: Center(
+            child: Text(
+              label,
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+        ),
+      ),
     );
   }
 }
@@ -268,50 +386,55 @@ class _MetaTile extends StatelessWidget {
 }
 
 class _ChecklistRow extends StatelessWidget {
-  const _ChecklistRow({required this.label, required this.done});
+  const _ChecklistRow({required this.label, required this.done, this.onTap});
 
   final String label;
   final bool done;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
-      decoration: BoxDecoration(
-        color: done ? AppColors.bgSoft : AppColors.bg,
-        border: Border.all(color: done ? AppColors.line : AppColors.lineSoft),
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: 24,
-            height: 24,
-            decoration: BoxDecoration(
-              color: done ? AppColors.brand : Colors.transparent,
-              borderRadius: BorderRadius.circular(7),
-              border: Border.all(
-                color: done ? AppColors.brand : AppColors.faint,
-                width: 1.5,
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(12),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
+        decoration: BoxDecoration(
+          color: done ? AppColors.bgSoft : AppColors.bg,
+          border: Border.all(color: done ? AppColors.line : AppColors.lineSoft),
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 24,
+              height: 24,
+              decoration: BoxDecoration(
+                color: done ? AppColors.brand : Colors.transparent,
+                borderRadius: BorderRadius.circular(7),
+                border: Border.all(
+                  color: done ? AppColors.brand : AppColors.faint,
+                  width: 1.5,
+                ),
+              ),
+              child: done
+                  ? const Icon(Icons.check, size: 14, color: Colors.white)
+                  : null,
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                label,
+                style: TextStyle(
+                  fontSize: 13.5,
+                  fontWeight: FontWeight.w500,
+                  color: done ? AppColors.mute : AppColors.text,
+                  decoration: done ? TextDecoration.lineThrough : null,
+                ),
               ),
             ),
-            child: done
-                ? const Icon(Icons.check, size: 14, color: Colors.white)
-                : null,
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Text(
-              label,
-              style: TextStyle(
-                fontSize: 13.5,
-                fontWeight: FontWeight.w500,
-                color: done ? AppColors.mute : AppColors.text,
-                decoration: done ? TextDecoration.lineThrough : null,
-              ),
-            ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

@@ -31,7 +31,16 @@ class CachedMachines extends Table {
   Set<Column<Object>> get primaryKey => {id};
 }
 
-@DriftDatabase(tables: [CachedInterventions, CachedMachines])
+/// Pending offline mutations (the sync queue). Each row is a deferred API call
+/// that is replayed, in order, when connectivity returns.
+class SyncOps extends Table {
+  IntColumn get id => integer().autoIncrement()();
+  TextColumn get method => text()();
+  TextColumn get path => text()();
+  TextColumn get body => text()();
+}
+
+@DriftDatabase(tables: [CachedInterventions, CachedMachines, SyncOps])
 class AppDatabase extends _$AppDatabase {
   AppDatabase() : super(_open());
 
@@ -39,7 +48,15 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.forTesting(super.executor);
 
   @override
-  int get schemaVersion => 1;
+  int get schemaVersion => 2;
+
+  @override
+  MigrationStrategy get migration => MigrationStrategy(
+        onCreate: (m) => m.createAll(),
+        onUpgrade: (m, from, to) async {
+          if (from < 2) await m.createTable(syncOps);
+        },
+      );
 
   // ── Interventions ──────────────────────────────────────────────────────────
   Stream<List<Intervention>> watchInterventions() =>
@@ -59,6 +76,31 @@ class AppDatabase extends _$AppDatabase {
 
   Future<void> replaceMachines(List<Machine> items) =>
       _replace(cachedMachines, items, (m) => m.id, (m) => m.toJson());
+
+  /// Optimistically update one cached intervention (e.g. after a local edit).
+  Future<void> upsertIntervention(Intervention i) {
+    return into(cachedInterventions).insertOnConflictUpdate(
+      CachedInterventionsCompanion.insert(
+        id: i.id,
+        data: jsonEncode(i.toJson()),
+      ),
+    );
+  }
+
+  // ── Sync queue ───────────────────────────────────────────────────────────────
+  Future<void> enqueueOp(String method, String path, String body) {
+    return into(syncOps).insert(
+      SyncOpsCompanion.insert(method: method, path: path, body: body),
+    );
+  }
+
+  Future<List<SyncOp>> pendingOps() =>
+      (select(syncOps)..orderBy([(t) => OrderingTerm.asc(t.id)])).get();
+
+  Future<void> deleteOp(int id) =>
+      (delete(syncOps)..where((t) => t.id.equals(id))).go();
+
+  Stream<int> watchPendingCount() => syncOps.count().watchSingle();
 
   // ── Helpers ────────────────────────────────────────────────────────────────
   /// Atomically swap a cache table to exactly [items] (so deletions propagate).
