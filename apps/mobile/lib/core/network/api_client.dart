@@ -1,13 +1,17 @@
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'package:maintflow_mobile/core/config/env.dart';
+import 'package:maintflow_mobile/data/auth/session_store.dart';
 
-/// Dio configured against the NestJS API.
-/// An interceptor attaches the current Supabase access token to every request,
-/// and triggers a session refresh on 401.
+/// Dio configured against the NestJS API. An interceptor attaches the current
+/// access token (held in [SessionStore]) to every request.
+///
+/// Token refresh is a no-op for now: local dev uses long-lived dev-login
+/// tokens. Real Supabase session refresh on 401 lands with the auth wiring.
 final apiClientProvider = Provider<Dio>((ref) {
+  final session = ref.watch(sessionStoreProvider);
+
   final dio = Dio(
     BaseOptions(
       baseUrl: '${Env.apiUrl}/api/v1',
@@ -20,18 +24,11 @@ final apiClientProvider = Provider<Dio>((ref) {
   dio.interceptors.add(
     InterceptorsWrapper(
       onRequest: (options, handler) {
-        final token = Supabase.instance.client.auth.currentSession?.accessToken;
+        final token = session.token;
         if (token != null) {
           options.headers['Authorization'] = 'Bearer $token';
         }
         handler.next(options);
-      },
-      onError: (error, handler) async {
-        if (error.response?.statusCode == 401) {
-          // Attempt a one-shot refresh; the auth layer will redirect on failure.
-          await Supabase.instance.client.auth.refreshSession();
-        }
-        handler.next(error);
       },
     ),
   );
