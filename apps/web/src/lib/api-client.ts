@@ -184,6 +184,9 @@ export const api = {
     schedule: (id: string) =>
       request<PlanRule>(`/planning/rules/${id}/schedule`, { method: 'POST' }),
   },
+  admin: {
+    resetDemo: () => request<{ site: string }>('/admin/reset-demo', { method: 'POST' }),
+  },
   users: {
     list: () => request<SiteUser[]>('/users'),
     update: (id: string, body: { role?: UserRole; status?: 'active' | 'inactive' }) =>

@@ -60,7 +60,7 @@ try {
   await page.screenshot({ path: `${out}/app-dashboard.png`, fullPage: true });
   console.log('  url after login:', page.url());
 
-  for (const route of ['machines', 'faults', 'interventions', 'technicians', 'planning', 'history', 'users']) {
+  for (const route of ['machines', 'faults', 'interventions', 'technicians', 'planning', 'history', 'users', 'settings']) {
     try {
       await page.goto(`http://localhost:3000/${route}`, { waitUntil: 'networkidle', timeout: 30000 });
       await page.waitForTimeout(1500);
