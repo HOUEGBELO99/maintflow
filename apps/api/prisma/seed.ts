@@ -29,15 +29,30 @@ async function main(): Promise<void> {
 
   // ── Users (U1..U6) ─────────────────────────────────────────────────────────
   const users = [
-    { id: U['L. Moreau'], name: 'Laurent Moreau', email: 'l.moreau@usine.fr', role: 'admin', workshop: 'Tous', color: '#00C24A', initials: 'LM' },
-    { id: U['S. Diallo'], name: 'Sophie Diallo', email: 's.diallo@usine.fr', role: 'technicien', workshop: 'Atelier A', color: '#2563EB', initials: 'SD' },
-    { id: U['J. Petit'], name: 'Julien Petit', email: 'j.petit@usine.fr', role: 'technicien', workshop: 'Atelier B', color: '#F59E0B', initials: 'JP' },
-    { id: U['T. Khan'], name: 'Tarek Khan', email: 't.khan@usine.fr', role: 'operateur', workshop: 'Atelier B', color: '#7C3AED', initials: 'TK' },
-    { id: '00000000-0000-4000-a000-000000000105', name: 'Marie Roux', email: 'm.roux@usine.fr', role: 'chef_maintenance', workshop: 'Direction', color: '#0E1410', initials: 'MR' },
-    { id: '00000000-0000-4000-a000-000000000106', name: 'Hervé Akkari', email: 'h.akkari@usine.fr', role: 'chef_atelier', workshop: 'Direction', color: '#0EA5A0', initials: 'HA' },
+    { id: U['L. Moreau'], name: 'Laurent Moreau', email: 'l.moreau@usine.fr', role: 'admin', workshop: 'Tous', color: '#00C24A', initials: 'LM', lastLogin: '2026-05-21T08:14:00' },
+    { id: U['S. Diallo'], name: 'Sophie Diallo', email: 's.diallo@usine.fr', role: 'technicien', workshop: 'Atelier A', color: '#2563EB', initials: 'SD', lastLogin: '2026-05-21T07:32:00' },
+    { id: U['J. Petit'], name: 'Julien Petit', email: 'j.petit@usine.fr', role: 'technicien', workshop: 'Atelier B', color: '#F59E0B', initials: 'JP', lastLogin: '2026-05-20T16:55:00' },
+    { id: U['T. Khan'], name: 'Tarek Khan', email: 't.khan@usine.fr', role: 'operateur', workshop: 'Atelier B', color: '#7C3AED', initials: 'TK', lastLogin: '2026-05-21T06:10:00' },
+    { id: '00000000-0000-4000-a000-000000000105', name: 'Marie Roux', email: 'm.roux@usine.fr', role: 'chef_maintenance', workshop: 'Direction', color: '#0E1410', initials: 'MR', lastLogin: '2026-05-19T14:20:00' },
+    { id: '00000000-0000-4000-a000-000000000106', name: 'Hervé Akkari', email: 'h.akkari@usine.fr', role: 'chef_atelier', workshop: 'Direction', color: '#0EA5A0', initials: 'HA', lastLogin: '2026-05-18T11:05:00' },
   ] as const;
   for (const u of users) {
-    await prisma.user.upsert({ where: { id: u.id }, update: {}, create: { siteId: site.id, ...u } });
+    const data = { siteId: site.id, ...u, lastLogin: new Date(u.lastLogin) };
+    await prisma.user.upsert({ where: { id: u.id }, update: { lastLogin: data.lastLogin }, create: data });
+  }
+
+  // ── Invitations (pending / accepted) ────────────────────────────────────────
+  const invitations = [
+    { id: '00000000-0000-4000-a000-000000000801', email: 'p.kone@usine.fr', role: 'technicien', workshop: 'Atelier C', by: U['L. Moreau'], sentAt: '2026-05-20T10:00:00', status: 'pending' },
+    { id: '00000000-0000-4000-a000-000000000802', email: 'n.bernard@usine.fr', role: 'operateur', workshop: 'Atelier D', by: U['L. Moreau'], sentAt: '2026-05-18T15:30:00', status: 'pending' },
+    { id: '00000000-0000-4000-a000-000000000803', email: 'c.lopez@usine.fr', role: 'chef_atelier', workshop: 'Direction', by: '00000000-0000-4000-a000-000000000105', sentAt: '2026-05-15T09:00:00', status: 'accepted' },
+  ] as const;
+  for (const inv of invitations) {
+    const data = {
+      siteId: site.id, email: inv.email, role: inv.role, workshop: inv.workshop,
+      invitedById: inv.by, sentAt: new Date(inv.sentAt), status: inv.status,
+    };
+    await prisma.invitation.upsert({ where: { id: inv.id }, update: data, create: { id: inv.id, ...data } });
   }
 
   // Technician performance profiles (linked to field users).
@@ -197,6 +212,7 @@ async function main(): Promise<void> {
   console.log('✅ Seed complete:', {
     site: site.name,
     users: users.length,
+    invitations: invitations.length,
     technicians: technicians.length,
     machines: machines.length,
     faults: faults.length,

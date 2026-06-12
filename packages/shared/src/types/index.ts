@@ -9,6 +9,7 @@ import type {
   FaultType,
   InterventionKind,
   InterventionStatus,
+  InvitationStatus,
   MachineState,
   NotificationLevel,
   ReminderStatus,
@@ -142,6 +143,17 @@ export interface User {
   workshop: string;
   status: 'active' | 'inactive';
   lastLogin: string | null;
+}
+
+export interface Invitation {
+  id: string;
+  email: string;
+  role: UserRole;
+  workshop: string;
+  /** Display name of the inviter, e.g. "L. Moreau". */
+  invitedBy: string;
+  sentAt: string;
+  status: InvitationStatus;
 }
 
 export interface Notification {

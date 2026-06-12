@@ -70,6 +70,13 @@ export const NotificationLevel = {
 } as const;
 export type NotificationLevel = (typeof NotificationLevel)[keyof typeof NotificationLevel];
 
+export const InvitationStatus = {
+  PENDING: 'pending',
+  ACCEPTED: 'accepted',
+  REVOKED: 'revoked',
+} as const;
+export type InvitationStatus = (typeof InvitationStatus)[keyof typeof InvitationStatus];
+
 export const ReminderStatus = {
   /** Reminder window not yet reached. */
   SCHEDULED: 'scheduled',
