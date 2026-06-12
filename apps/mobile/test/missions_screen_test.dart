@@ -44,12 +44,14 @@ void main() {
       ProviderScope(
         overrides: [
           missionsProvider.overrideWith(
-            (ref) async => [
+            (ref) => Stream.value([
               _mission(InterventionStatus.completed),
               _mission(InterventionStatus.planned),
-            ],
+            ]),
           ),
-          machinesByIdProvider.overrideWith((ref) async => {'m1': _machine}),
+          machinesByIdProvider.overrideWith(
+            (ref) => Stream.value({'m1': _machine}),
+          ),
         ],
         child: const MaterialApp(home: MissionsScreen()),
       ),

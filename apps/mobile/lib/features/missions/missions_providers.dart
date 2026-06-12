@@ -1,24 +1,34 @@
+import 'dart:async';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import 'package:maintflow_mobile/data/datasources/api_data_source.dart';
 import 'package:maintflow_mobile/data/models/intervention.dart';
 import 'package:maintflow_mobile/data/models/machine.dart';
+import 'package:maintflow_mobile/data/repositories/missions_repository.dart';
 import 'package:maintflow_mobile/features/auth/auth_controller.dart';
 
-/// The signed-in technician's interventions, soonest first.
-final missionsProvider =
-    FutureProvider.autoDispose<List<Intervention>>((ref) async {
+/// The signed-in technician's interventions, read from the offline cache
+/// (soonest first) and refreshed from the API in the background. A failed
+/// refresh (e.g. offline) is ignored so the cached data keeps showing.
+final missionsProvider = StreamProvider.autoDispose<List<Intervention>>((ref) {
+  final repo = ref.watch(missionsRepositoryProvider);
   final user = ref.watch(authControllerProvider).valueOrNull;
-  if (user == null) return const <Intervention>[];
-  final missions =
-      await ref.watch(apiDataSourceProvider).fetchMissions(user.id);
-  return missions.toList()
-    ..sort((a, b) => a.scheduledFor.compareTo(b.scheduledFor));
+  if (user != null) {
+    unawaited(repo.refreshMissions(user.id).catchError((Object _) {}));
+  }
+  return repo.watchMissions().map(
+        (list) => list.toList()
+          ..sort((a, b) => a.scheduledFor.compareTo(b.scheduledFor)),
+      );
 });
 
-/// Machines indexed by id, for resolving names/workshops on mission rows.
+/// Machines indexed by id (offline cache + background refresh), for resolving
+/// names/workshops on mission rows.
 final machinesByIdProvider =
-    FutureProvider.autoDispose<Map<String, Machine>>((ref) async {
-  final machines = await ref.watch(apiDataSourceProvider).fetchMachines();
-  return <String, Machine>{for (final m in machines) m.id: m};
+    StreamProvider.autoDispose<Map<String, Machine>>((ref) {
+  final repo = ref.watch(missionsRepositoryProvider);
+  unawaited(repo.refreshMachines().catchError((Object _) {}));
+  return repo
+      .watchMachines()
+      .map((list) => <String, Machine>{for (final m in list) m.id: m});
 });
