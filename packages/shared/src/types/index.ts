@@ -67,13 +67,20 @@ export interface Intervention {
 
 export interface Technician {
   id: string;
+  userId: string;
+  /** Short display name, e.g. "L. Moreau". */
   name: string;
-  role: string;
+  /** Display title, e.g. "Technicien sénior". */
+  title: string;
+  color: string | null;
   specialties: string[];
   available: boolean;
   onTime: number;
   rating: number;
   doneThisMonth: number;
+  /** Live workload: active (non-completed) interventions assigned to this technician. */
+  activeCount: number;
+  activeHours: number;
 }
 
 export interface Part {

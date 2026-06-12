@@ -42,16 +42,16 @@ async function main(): Promise<void> {
 
   // Technician performance profiles (linked to field users).
   const technicians = [
-    { id: '00000000-0000-4000-a000-000000000501', userId: U['L. Moreau'], specialties: ['mécanique', 'hydraulique'], available: true, onTime: 94, rating: 4.8, doneThisMonth: 14 },
-    { id: '00000000-0000-4000-a000-000000000502', userId: U['S. Diallo'], specialties: ['électrique', 'mécanique'], available: true, onTime: 88, rating: 4.5, doneThisMonth: 11 },
-    { id: '00000000-0000-4000-a000-000000000503', userId: U['J. Petit'], specialties: ['électrique', 'logiciel'], available: false, onTime: 91, rating: 4.6, doneThisMonth: 9 },
-    { id: '00000000-0000-4000-a000-000000000504', userId: U['T. Khan'], specialties: ['hydraulique', 'mécanique'], available: true, onTime: 79, rating: 4.2, doneThisMonth: 7 },
+    { id: '00000000-0000-4000-a000-000000000501', userId: U['L. Moreau'], title: 'Technicien sénior', specialties: ['mécanique', 'hydraulique'], available: true, onTime: 94, rating: 4.8, doneThisMonth: 14 },
+    { id: '00000000-0000-4000-a000-000000000502', userId: U['S. Diallo'], title: 'Technicien', specialties: ['électrique', 'mécanique'], available: true, onTime: 88, rating: 4.5, doneThisMonth: 11 },
+    { id: '00000000-0000-4000-a000-000000000503', userId: U['J. Petit'], title: 'Technicien', specialties: ['électrique', 'logiciel'], available: false, onTime: 91, rating: 4.6, doneThisMonth: 9 },
+    { id: '00000000-0000-4000-a000-000000000504', userId: U['T. Khan'], title: 'Technicien junior', specialties: ['hydraulique', 'mécanique'], available: true, onTime: 79, rating: 4.2, doneThisMonth: 7 },
   ] as const;
   for (const t of technicians) {
     await prisma.technician.upsert({
       where: { id: t.id },
-      update: {},
-      create: { id: t.id, userId: t.userId, specialties: [...t.specialties], available: t.available, onTime: t.onTime, rating: t.rating, doneThisMonth: t.doneThisMonth },
+      update: { title: t.title },
+      create: { id: t.id, userId: t.userId, title: t.title, specialties: [...t.specialties], available: t.available, onTime: t.onTime, rating: t.rating, doneThisMonth: t.doneThisMonth },
     });
   }
 
