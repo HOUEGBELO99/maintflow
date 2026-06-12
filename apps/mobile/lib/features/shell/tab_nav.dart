@@ -12,5 +12,7 @@ void onTabTap(BuildContext context, String key) {
       context.go('/missions');
     case 'scan':
       context.push('/scan');
+    case 'profile':
+      context.go('/profile');
   }
 }

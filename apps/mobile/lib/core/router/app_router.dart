@@ -8,6 +8,7 @@ import 'package:maintflow_mobile/features/machines/home_screen.dart';
 import 'package:maintflow_mobile/features/machines/machine_detail_screen.dart';
 import 'package:maintflow_mobile/features/missions/mission_detail_screen.dart';
 import 'package:maintflow_mobile/features/missions/missions_screen.dart';
+import 'package:maintflow_mobile/features/profile/profile_screen.dart';
 import 'package:maintflow_mobile/features/report/report_screen.dart';
 import 'package:maintflow_mobile/features/scan/scan_screen.dart';
 
@@ -34,6 +35,10 @@ final appRouterProvider = Provider<GoRouter>((ref) {
     routes: [
       GoRoute(path: '/login', builder: (context, state) => const LoginScreen()),
       GoRoute(path: '/home', builder: (context, state) => const HomeScreen()),
+      GoRoute(
+        path: '/profile',
+        builder: (context, state) => const ProfileScreen(),
+      ),
       GoRoute(
         path: '/machines/:id',
         builder: (context, state) =>
