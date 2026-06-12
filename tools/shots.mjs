@@ -47,10 +47,11 @@ try {
 // 2) Our app: login -> dashboard
 try {
   await page.goto('http://localhost:3000/login', { waitUntil: 'networkidle', timeout: 30000 });
+  await page.waitForTimeout(800);
   await page.screenshot({ path: `${out}/app-login.png` });
-  await page.getByText('Laurent Moreau').click();
+  await page.getByRole('button', { name: 'Se connecter' }).click();
   await page.waitForURL('**/dashboard', { timeout: 15000 });
-  await page.waitForTimeout(1500);
+  await page.waitForTimeout(1800);
   await page.screenshot({ path: `${out}/app-dashboard.png` });
   console.log('✓ app-login.png, app-dashboard.png');
 } catch (e) {
