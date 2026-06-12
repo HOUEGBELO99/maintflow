@@ -1,17 +1,31 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'package:maintflow_mobile/core/network/connectivity.dart';
 import 'package:maintflow_mobile/core/theme/app_theme.dart';
 import 'package:maintflow_mobile/core/widgets/app_pill.dart';
 import 'package:maintflow_mobile/data/models/enums.dart';
 import 'package:maintflow_mobile/data/models/intervention.dart';
 import 'package:maintflow_mobile/data/models/machine.dart';
+import 'package:maintflow_mobile/data/repositories/missions_repository.dart';
+import 'package:maintflow_mobile/features/auth/auth_controller.dart';
 import 'package:maintflow_mobile/features/missions/missions_providers.dart';
 import 'package:maintflow_mobile/features/shell/bottom_tabs.dart';
 
-/// "Mes missions" — the technician's interventions for today, read from the API
-/// (offline Drift cache will front this next). Tapping a row will open its
+/// "Mes missions" — the technician's interventions, read offline-first from the
+/// Drift cache and pull-to-refreshed from the API. Tapping a row will open its
 /// detail / checklist once those screens land.
+Future<void> _refresh(WidgetRef ref) async {
+  final user = ref.read(authControllerProvider).valueOrNull;
+  if (user == null) return;
+  final repo = ref.read(missionsRepositoryProvider);
+  try {
+    await Future.wait([repo.refreshMissions(user.id), repo.refreshMachines()]);
+  } catch (_) {
+    // Offline or server error — the cache keeps serving the last known data.
+  }
+}
+
 String _fmtHours(double h) {
   if (h == h.roundToDouble()) return '${h.toInt()} h';
   final whole = h.floor();
@@ -33,6 +47,7 @@ class MissionsScreen extends ConsumerWidget {
     final missionsAsync = ref.watch(missionsProvider);
     final machines = ref.watch(machinesByIdProvider).valueOrNull ??
         const <String, Machine>{};
+    final offline = ref.watch(connectivityProvider).valueOrNull == false;
 
     return Scaffold(
       backgroundColor: AppColors.bg,
@@ -56,6 +71,7 @@ class MissionsScreen extends ConsumerWidget {
 
             return Column(
               children: [
+                if (offline) const _OfflineBanner(),
                 Padding(
                   padding: const EdgeInsets.fromLTRB(20, 0, 20, 22),
                   child: Column(
@@ -104,26 +120,37 @@ class MissionsScreen extends ConsumerWidget {
                   ),
                 ),
                 Expanded(
-                  child: missions.isEmpty
-                      ? const Center(
-                          child: Text(
-                            'Aucune mission assignée.',
-                            style: TextStyle(color: AppColors.mute),
+                  child: RefreshIndicator(
+                    color: AppColors.brand,
+                    onRefresh: () => _refresh(ref),
+                    child: missions.isEmpty
+                        ? ListView(
+                            physics: const AlwaysScrollableScrollPhysics(),
+                            children: const [
+                              SizedBox(height: 80),
+                              Center(
+                                child: Text(
+                                  'Aucune mission assignée.',
+                                  style: TextStyle(color: AppColors.mute),
+                                ),
+                              ),
+                            ],
+                          )
+                        : ListView.separated(
+                            physics: const AlwaysScrollableScrollPhysics(),
+                            padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
+                            itemCount: missions.length,
+                            separatorBuilder: (_, __) => const Divider(
+                              height: 1,
+                              thickness: 1,
+                              color: AppColors.lineSoft,
+                            ),
+                            itemBuilder: (_, i) => _MissionRow(
+                              mission: missions[i],
+                              machine: machines[missions[i].machineId],
+                            ),
                           ),
-                        )
-                      : ListView.separated(
-                          padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
-                          itemCount: missions.length,
-                          separatorBuilder: (_, __) => const Divider(
-                            height: 1,
-                            thickness: 1,
-                            color: AppColors.lineSoft,
-                          ),
-                          itemBuilder: (_, i) => _MissionRow(
-                            mission: missions[i],
-                            machine: machines[missions[i].machineId],
-                          ),
-                        ),
+                  ),
                 ),
                 BottomTabs(active: 'missions', onTap: (_) {}),
               ],
@@ -322,6 +349,40 @@ class _MissionRow extends StatelessWidget {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _OfflineBanner extends StatelessWidget {
+  const _OfflineBanner();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      margin: const EdgeInsets.fromLTRB(20, 0, 20, 14),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        color: AppColors.warnBg,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: AppColors.warnBorder),
+      ),
+      child: const Row(
+        children: [
+          Icon(Icons.cloud_off_outlined, size: 16, color: AppColors.warnFg),
+          SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              'Mode hors-ligne — données en cache',
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                color: AppColors.warnFg,
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
