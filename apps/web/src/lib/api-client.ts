@@ -5,7 +5,10 @@ import type {
   FaultStatus,
   FaultType,
   Intervention,
+  InterventionKind,
+  InterventionStatus,
   Machine,
+  UserRole,
 } from '@maintflow/shared';
 
 import { getAccessToken, type SessionUser } from './store/auth';
@@ -74,6 +77,33 @@ export interface FaultUpdate {
   rootCause?: string;
 }
 
+export interface SiteUser {
+  id: string;
+  name: string;
+  email: string;
+  role: UserRole;
+  workshop: string;
+  status: 'active' | 'inactive';
+  initials: string | null;
+  color: string | null;
+}
+
+export interface InterventionInput {
+  machineId: string;
+  technicianId: string;
+  kind: InterventionKind;
+  description: string;
+  scheduledFor: string;
+  duration: number;
+}
+export interface InterventionUpdate {
+  status?: InterventionStatus;
+  technicianId?: string;
+  description?: string;
+  scheduledFor?: string;
+  duration?: number;
+}
+
 export const api = {
   auth: {
     devLogin: (email: string) =>
@@ -111,5 +141,14 @@ export const api = {
   },
   interventions: {
     list: () => request<Intervention[]>('/interventions'),
+    create: (body: InterventionInput) =>
+      request<Intervention>('/interventions', { method: 'POST', body: JSON.stringify(body) }),
+    update: (id: string, body: InterventionUpdate) =>
+      request<Intervention>(`/interventions/${id}`, { method: 'PATCH', body: JSON.stringify(body) }),
+    remove: (id: string) =>
+      request<{ id: string; deleted: boolean }>(`/interventions/${id}`, { method: 'DELETE' }),
+  },
+  users: {
+    list: () => request<SiteUser[]>('/users'),
   },
 };
