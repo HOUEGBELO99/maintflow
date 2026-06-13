@@ -2,15 +2,16 @@ import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:maintflow_mobile/core/config/env.dart';
+import 'package:maintflow_mobile/core/network/auth_interceptor.dart';
 import 'package:maintflow_mobile/data/auth/session_store.dart';
+import 'package:maintflow_mobile/data/auth/token_refresher.dart';
 
-/// Dio configured against the NestJS API. An interceptor attaches the current
-/// access token (held in [SessionStore]) to every request.
-///
-/// Token refresh is a no-op for now: local dev uses long-lived dev-login
-/// tokens. Real Supabase session refresh on 401 lands with the auth wiring.
+/// Dio configured against the NestJS API. [AuthInterceptor] attaches the current
+/// access token (held in [SessionStore]) to every request and, on a 401,
+/// refreshes the token once via [TokenRefresher] and replays the request.
 final apiClientProvider = Provider<Dio>((ref) {
   final session = ref.watch(sessionStoreProvider);
+  final refresher = ref.watch(tokenRefresherProvider);
 
   final dio = Dio(
     BaseOptions(
@@ -22,15 +23,7 @@ final apiClientProvider = Provider<Dio>((ref) {
   );
 
   dio.interceptors.add(
-    InterceptorsWrapper(
-      onRequest: (options, handler) {
-        final token = session.token;
-        if (token != null) {
-          options.headers['Authorization'] = 'Bearer $token';
-        }
-        handler.next(options);
-      },
-    ),
+    AuthInterceptor(dio: dio, tokens: session, refresher: refresher),
   );
 
   return dio;

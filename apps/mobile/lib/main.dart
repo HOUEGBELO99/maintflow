@@ -2,7 +2,9 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
+import 'package:maintflow_mobile/core/config/env.dart';
 import 'package:maintflow_mobile/core/network/connectivity.dart';
 import 'package:maintflow_mobile/core/router/app_router.dart';
 import 'package:maintflow_mobile/core/theme/app_theme.dart';
@@ -10,6 +12,15 @@ import 'package:maintflow_mobile/data/repositories/sync_service.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  // Real auth runs against Supabase when configured (prod); local dev falls
+  // back to the API dev-login route and a no-op token refresher.
+  if (Env.isConfigured) {
+    await Supabase.initialize(
+      url: Env.supabaseUrl,
+      // The anon key is Supabase's renamed "publishable" public client key.
+      publishableKey: Env.supabaseAnonKey,
+    );
+  }
   runApp(const ProviderScope(child: MaintFlowApp()));
 }
 
