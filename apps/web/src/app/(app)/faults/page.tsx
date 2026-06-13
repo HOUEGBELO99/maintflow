@@ -36,12 +36,15 @@ function FaultChrono({ from }: { from: string }) {
     return () => clearInterval(id);
   }, []);
   const ms = Math.max(0, Date.now() - new Date(from).getTime());
-  const h = Math.floor(ms / 3600000);
+  const totalH = Math.floor(ms / 3600000);
+  const d = Math.floor(totalH / 24);
+  const h = totalH % 24;
   const m = Math.floor((ms % 3600000) / 60000);
   const s = Math.floor((ms % 60000) / 1000);
+  // Past a day, hours+seconds are noise — show days for readability.
   return (
     <span className="font-mono text-[13px] font-semibold text-critical">
-      {h}h {pad(m)}m {pad(s)}s
+      {d >= 1 ? `${d}j ${pad(h)}h ${pad(m)}m` : `${h}h ${pad(m)}m ${pad(s)}s`}
     </span>
   );
 }

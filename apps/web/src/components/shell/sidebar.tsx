@@ -1,5 +1,6 @@
 'use client';
 
+import type { Route } from 'next';
 import Image from 'next/image';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
@@ -75,7 +76,7 @@ export function Sidebar({
                 return (
                   <Link
                     key={it.key}
-                    href={it.href}
+                    href={it.href as Route}
                     className={`relative flex items-center gap-3 rounded-md px-3 py-[9px] text-[13.5px] font-medium transition-colors ${
                       active ? 'bg-[rgba(0,255,0,0.10)] text-white' : 'text-nav-text hover:bg-nav-soft'
                     }`}
