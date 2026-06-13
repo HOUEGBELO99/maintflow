@@ -87,6 +87,11 @@ class ProfileScreen extends ConsumerWidget {
                     label: 'Mon parc',
                     sub: 'Toutes les machines',
                     onTap: () => context.go('/home'),
+                  ),
+                  _LinkRow(
+                    label: 'Alertes',
+                    sub: 'Pannes du site',
+                    onTap: () => context.push('/alerts'),
                     last: true,
                   ),
                   const SizedBox(height: 24),

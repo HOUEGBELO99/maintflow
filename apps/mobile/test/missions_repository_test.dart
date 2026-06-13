@@ -53,6 +53,21 @@ Map<String, dynamic> _missionJson(String id, String status) =>
       'signedBy': null,
     };
 
+Map<String, dynamic> _faultJson(String id, String severity) =>
+    <String, dynamic>{
+      'id': id,
+      'machineId': 'm1',
+      'type': 'electrique',
+      'description': 'Fault $id',
+      'reportedAt': '2026-05-21T08:00:00.000Z',
+      'reportedBy': 'u1',
+      'severity': severity,
+      'status': 'pending',
+      'rootCause': null,
+      'hasPhoto': false,
+      'takenAt': null,
+    };
+
 void main() {
   late AppDatabase db;
 
@@ -89,5 +104,19 @@ void main() {
     final cached = await repo.watchMissions().first;
     expect(cached.single.id, 'i9');
     expect(cached.single.status, InterventionStatus.inProgress);
+  });
+
+  test('refreshFaults writes the API response through to the offline cache',
+      () async {
+    final dio = Dio(BaseOptions(baseUrl: 'http://localhost:4000/api/v1'));
+    dio.httpClientAdapter =
+        _FakeAdapter((_) => _ok([_faultJson('f1', 'critical')]));
+
+    final repo = MissionsRepository(db, ApiDataSource(dio));
+    await repo.refreshFaults();
+
+    final cached = await repo.watchFaults().first;
+    expect(cached.single.id, 'f1');
+    expect(cached.single.severity, FaultSeverity.critical);
   });
 }

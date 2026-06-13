@@ -111,24 +111,44 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text(
-                        'MON PARC',
-                        style: TextStyle(
-                          fontSize: 10.5,
-                          fontWeight: FontWeight.w600,
-                          color: AppColors.mute,
-                          letterSpacing: 0.8,
-                        ),
-                      ),
-                      const SizedBox(height: 6),
-                      Text(
-                        '${all.length} machine${all.length > 1 ? 's' : ''}',
-                        style: const TextStyle(
-                          fontSize: 26,
-                          fontWeight: FontWeight.w700,
-                          letterSpacing: -0.7,
-                          color: AppColors.ink,
-                        ),
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Text(
+                                  'MON PARC',
+                                  style: TextStyle(
+                                    fontSize: 10.5,
+                                    fontWeight: FontWeight.w600,
+                                    color: AppColors.mute,
+                                    letterSpacing: 0.8,
+                                  ),
+                                ),
+                                const SizedBox(height: 6),
+                                Text(
+                                  '${all.length} machine${all.length > 1 ? 's' : ''}',
+                                  style: const TextStyle(
+                                    fontSize: 26,
+                                    fontWeight: FontWeight.w700,
+                                    letterSpacing: -0.7,
+                                    color: AppColors.ink,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          IconButton(
+                            onPressed: () => context.push('/alerts'),
+                            icon: const Icon(
+                              Icons.notifications_none_rounded,
+                              color: AppColors.ink,
+                            ),
+                            tooltip: 'Alertes',
+                          ),
+                        ],
                       ),
                       const SizedBox(height: 16),
                       _KpiStrip(

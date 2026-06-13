@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import 'package:maintflow_mobile/features/auth/auth_controller.dart';
+import 'package:maintflow_mobile/features/alerts/alerts_screen.dart';
 import 'package:maintflow_mobile/features/auth/login_screen.dart';
 import 'package:maintflow_mobile/features/machines/home_screen.dart';
 import 'package:maintflow_mobile/features/machines/machine_detail_screen.dart';
@@ -36,6 +37,10 @@ final appRouterProvider = Provider<GoRouter>((ref) {
     routes: [
       GoRoute(path: '/login', builder: (context, state) => const LoginScreen()),
       GoRoute(path: '/home', builder: (context, state) => const HomeScreen()),
+      GoRoute(
+        path: '/alerts',
+        builder: (context, state) => const AlertsScreen(),
+      ),
       GoRoute(
         path: '/profile',
         builder: (context, state) => const ProfileScreen(),

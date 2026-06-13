@@ -7,6 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 
+import 'package:maintflow_mobile/data/models/fault.dart';
 import 'package:maintflow_mobile/data/models/intervention.dart';
 import 'package:maintflow_mobile/data/models/machine.dart';
 
@@ -31,6 +32,14 @@ class CachedMachines extends Table {
   Set<Column<Object>> get primaryKey => {id};
 }
 
+class CachedFaults extends Table {
+  TextColumn get id => text()();
+  TextColumn get data => text()();
+
+  @override
+  Set<Column<Object>> get primaryKey => {id};
+}
+
 /// Pending offline mutations (the sync queue). Each row is a deferred API call
 /// that is replayed, in order, when connectivity returns.
 class SyncOps extends Table {
@@ -40,7 +49,9 @@ class SyncOps extends Table {
   TextColumn get body => text()();
 }
 
-@DriftDatabase(tables: [CachedInterventions, CachedMachines, SyncOps])
+@DriftDatabase(
+  tables: [CachedInterventions, CachedMachines, CachedFaults, SyncOps],
+)
 class AppDatabase extends _$AppDatabase {
   AppDatabase() : super(_open());
 
@@ -48,13 +59,14 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.forTesting(super.executor);
 
   @override
-  int get schemaVersion => 2;
+  int get schemaVersion => 3;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
         onCreate: (m) => m.createAll(),
         onUpgrade: (m, from, to) async {
           if (from < 2) await m.createTable(syncOps);
+          if (from < 3) await m.createTable(cachedFaults);
         },
       );
 
@@ -76,6 +88,14 @@ class AppDatabase extends _$AppDatabase {
 
   Future<void> replaceMachines(List<Machine> items) =>
       _replace(cachedMachines, items, (m) => m.id, (m) => m.toJson());
+
+  // ── Faults ───────────────────────────────────────────────────────────────
+  Stream<List<Fault>> watchFaults() => select(cachedFaults).watch().map(
+        (rows) => rows.map((r) => _decode(r.data, Fault.fromJson)).toList(),
+      );
+
+  Future<void> replaceFaults(List<Fault> items) =>
+      _replace(cachedFaults, items, (f) => f.id, (f) => f.toJson());
 
   /// Optimistically update one cached intervention (e.g. after a local edit).
   Future<void> upsertIntervention(Intervention i) {

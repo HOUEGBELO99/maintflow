@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:maintflow_mobile/data/datasources/api_data_source.dart';
 import 'package:maintflow_mobile/data/local/app_database.dart';
+import 'package:maintflow_mobile/data/models/fault.dart';
 import 'package:maintflow_mobile/data/models/intervention.dart';
 import 'package:maintflow_mobile/data/models/machine.dart';
 
@@ -25,11 +26,17 @@ class MissionsRepository {
 
   Stream<List<Machine>> watchMachines() => _db.watchMachines();
 
+  Stream<List<Fault>> watchFaults() => _db.watchFaults();
+
   Future<void> refreshMissions(String technicianId) async {
     await _db.replaceInterventions(await _api.fetchMissions(technicianId));
   }
 
   Future<void> refreshMachines() async {
     await _db.replaceMachines(await _api.fetchMachines());
+  }
+
+  Future<void> refreshFaults() async {
+    await _db.replaceFaults(await _api.fetchFaults());
   }
 }
