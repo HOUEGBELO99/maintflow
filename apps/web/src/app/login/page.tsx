@@ -4,7 +4,8 @@ import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 
 import { Icon } from '@/components/icon';
-import { api, ApiError } from '@/lib/api-client';
+import { ApiError } from '@/lib/api-client';
+import { signIn } from '@/lib/auth';
 import { useAuth } from '@/lib/store/auth';
 
 /** Seeded back-office accounts for quick dev switching. Mirrors prisma/seed.ts. */
@@ -18,7 +19,7 @@ export default function LoginPage() {
   const router = useRouter();
   const setSession = useAuth((s) => s.setSession);
   const [email, setEmail] = useState('l.moreau@usine.fr');
-  const [password, setPassword] = useState('••••••••');
+  const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -27,7 +28,7 @@ export default function LoginPage() {
     setLoading(true);
     setError(null);
     try {
-      const { accessToken, user } = await api.auth.devLogin(email);
+      const { accessToken, user } = await signIn(email, password);
       setSession(accessToken, user);
       router.replace('/dashboard');
     } catch (err) {

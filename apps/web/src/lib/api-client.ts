@@ -39,7 +39,9 @@ export class ApiError extends Error {
 async function request<T>(path: string, init?: RequestInit & { auth?: boolean }): Promise<T> {
   const headers = new Headers(init?.headers);
   headers.set('Content-Type', 'application/json');
-  if (init?.auth !== false) {
+  // A caller-supplied Authorization wins (e.g. hydrating /auth/me right after a
+  // Supabase sign-in, before the token is in the store).
+  if (init?.auth !== false && !headers.has('Authorization')) {
     const token = getAccessToken();
     if (token) headers.set('Authorization', `Bearer ${token}`);
   }
@@ -134,6 +136,12 @@ export const api = {
         body: JSON.stringify({ email }),
         auth: false,
       }),
+    /** Hydrate the signed-in profile (role/siteId/name) after a Supabase login. */
+    me: (token?: string) =>
+      request<SessionUser>(
+        '/auth/me',
+        token ? { headers: { Authorization: `Bearer ${token}` } } : undefined,
+      ),
   },
   dashboard: {
     kpis: () => request<DashboardKpis>('/dashboard/kpis'),

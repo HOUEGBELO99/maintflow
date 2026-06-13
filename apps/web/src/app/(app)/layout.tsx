@@ -7,6 +7,7 @@ import { useEffect, useState, type ReactNode } from 'react';
 import { Sidebar } from '@/components/shell/sidebar';
 import { Topbar } from '@/components/shell/topbar';
 import { api } from '@/lib/api-client';
+import { signOut } from '@/lib/auth';
 import { useAuth } from '@/lib/store/auth';
 
 const TITLES: Record<string, string> = {
@@ -54,6 +55,7 @@ export default function AppLayout({ children }: { children: ReactNode }) {
           interventions: kpis ? kpis.inProgressInterventions + kpis.plannedInterventions : undefined,
         }}
         onLogout={() => {
+          void signOut();
           logout();
           router.replace('/login');
         }}
