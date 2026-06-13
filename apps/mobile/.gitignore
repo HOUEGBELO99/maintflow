@@ -1,0 +1,27 @@
+# Flutter / Dart
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.packages
+build/
+.pub-cache/
+.pub/
+pubspec.lock
+
+# FVM Version Cache
+.fvm/
+
+# Generated code (regenerate via `dart run build_runner build`)
+*.g.dart
+*.freezed.dart
+*.gr.dart
+*.config.dart
+*.mocks.dart
+
+# IDE / OS
+.idea/
+*.iml
+.DS_Store
+
+# Env / secrets
+*.env

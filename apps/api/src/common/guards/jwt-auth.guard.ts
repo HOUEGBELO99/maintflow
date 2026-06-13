@@ -4,25 +4,25 @@ import {
   Injectable,
   UnauthorizedException,
 } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
 import { Reflector } from '@nestjs/core';
-import { JwtService } from '@nestjs/jwt';
 
 import type { UserRole } from '@maintflow/shared';
 import { IS_PUBLIC_KEY } from '../decorators/public.decorator';
+import type { AuthenticatedRequest } from '../decorators/current-user.decorator';
 import { PrismaService } from '../../modules/prisma/prisma.service';
+import { SupabaseTokenVerifier } from '../auth/supabase-token.verifier';
 
 /**
- * Verifies the Supabase-issued JWT (HS256, signed with SUPABASE_JWT_SECRET),
- * then loads the application profile to attach { id, email, role, siteId }.
- * Routes are protected by default; use @Public() to opt out.
+ * Verifies the Supabase-issued access token (asymmetric signing keys via JWKS,
+ * or the legacy HS256 secret for local dev-login), then loads the application
+ * profile to attach { id, email, role, siteId }. Routes are protected by
+ * default; use @Public() to opt out.
  */
 @Injectable()
 export class JwtAuthGuard implements CanActivate {
   constructor(
     private readonly reflector: Reflector,
-    private readonly jwt: JwtService,
-    private readonly config: ConfigService,
+    private readonly tokens: SupabaseTokenVerifier,
     private readonly prisma: PrismaService,
   ) {}
 
@@ -33,19 +33,11 @@ export class JwtAuthGuard implements CanActivate {
     ]);
     if (isPublic) return true;
 
-    const req = context.switchToHttp().getRequest();
+    const req = context.switchToHttp().getRequest<AuthenticatedRequest>();
     const token = this.extractToken(req.headers.authorization);
     if (!token) throw new UnauthorizedException('Missing bearer token');
 
-    let payload: { sub: string; email?: string };
-    try {
-      payload = await this.jwt.verifyAsync(token, {
-        secret: this.config.getOrThrow<string>('SUPABASE_JWT_SECRET'),
-        audience: this.config.get<string>('ACCESS_TOKEN_AUDIENCE'),
-      });
-    } catch {
-      throw new UnauthorizedException('Invalid or expired token');
-    }
+    const payload = await this.tokens.verify(token);
 
     const profile = await this.prisma.user.findUnique({
       where: { id: payload.sub },

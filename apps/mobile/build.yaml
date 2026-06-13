@@ -1,0 +1,8 @@
+targets:
+  $default:
+    builders:
+      json_serializable:
+        options:
+          # Serialize nested objects (e.g. Intervention.checklist) by calling
+          # their own toJson(), so round-tripping through JSON is lossless.
+          explicit_to_json: true

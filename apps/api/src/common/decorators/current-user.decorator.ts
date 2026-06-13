@@ -10,9 +10,15 @@ export interface AuthUser {
   siteId: string;
 }
 
+/** Request shape once JwtAuthGuard has run. */
+export interface AuthenticatedRequest {
+  headers: { authorization?: string };
+  user?: AuthUser;
+}
+
 /** Usage: `findAll(@CurrentUser() user: AuthUser)`. */
 export const CurrentUser = createParamDecorator(
   (_data: unknown, ctx: ExecutionContext): AuthUser => {
-    return ctx.switchToHttp().getRequest().user;
+    return ctx.switchToHttp().getRequest<Required<AuthenticatedRequest>>().user;
   },
 );

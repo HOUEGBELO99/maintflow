@@ -70,6 +70,23 @@ export const NotificationLevel = {
 } as const;
 export type NotificationLevel = (typeof NotificationLevel)[keyof typeof NotificationLevel];
 
+export const InvitationStatus = {
+  PENDING: 'pending',
+  ACCEPTED: 'accepted',
+  REVOKED: 'revoked',
+} as const;
+export type InvitationStatus = (typeof InvitationStatus)[keyof typeof InvitationStatus];
+
+export const ReminderStatus = {
+  /** Reminder window not yet reached. */
+  SCHEDULED: 'scheduled',
+  /** Reminder fired (notification/e-mail sent). */
+  SENT: 'sent',
+  /** The reminded maintenance was carried out. */
+  DONE: 'done',
+} as const;
+export type ReminderStatus = (typeof ReminderStatus)[keyof typeof ReminderStatus];
+
 /** Granular permissions — mapped to roles in the CASL ability factory (API). */
 export const Permission = {
   WEB: 'web',

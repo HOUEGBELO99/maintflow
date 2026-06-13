@@ -85,6 +85,12 @@ enum InvitationStatus {
   revoked
 }
 
+enum ReminderStatus {
+  scheduled
+  sent
+  done
+}
+
 // ── Tenancy ──────────────────────────────────────────────────────────────────
 // A Site is the multi-tenant boundary. Every row hangs off a Site so RLS can
 // isolate data per customer/plant. Workshops group machines within a site.
@@ -105,6 +111,7 @@ model Site {
   interventions Intervention[]
   parts         Part[]
   planRules     PlanRule[]
+  reminders     Reminder[]
   notifications Notification[]
   invitations   Invitation[]
 
@@ -143,6 +150,7 @@ model User {
 model Technician {
   id            String   @id @default(uuid()) @db.Uuid
   userId        String   @unique @db.Uuid
+  title         String   @default("Technicien")
   specialties   String[] @default([])
   available     Boolean  @default(true)
   // Performance snapshot (recomputed by a scheduled job).
@@ -260,6 +268,10 @@ model Intervention {
   startedAt      DateTime?
   completedAt    DateTime?
 
+  // Technician check-in location, captured when work is started.
+  checkInLat Float?
+  checkInLng Float?
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -321,12 +333,15 @@ model PartUsage {
 model PlanRule {
   id           String   @id @default(uuid()) @db.Uuid
   siteId       String   @db.Uuid
+  code         String // e.g. PM-01
   machineId    String   @db.Uuid
   title        String
   everyWeeks   Int
   technicianId String?  @db.Uuid
   duration     Float
   nextDue      DateTime @db.Date
+  reminderLead Int      @default(2)
+  active       Boolean  @default(true)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -334,9 +349,33 @@ model PlanRule {
   site          Site           @relation(fields: [siteId], references: [id], onDelete: Cascade)
   machine       Machine        @relation(fields: [machineId], references: [id], onDelete: Cascade)
   interventions Intervention[]
+  reminders     Reminder[]
 
+  @@unique([siteId, code])
   @@index([siteId, nextDue])
   @@map("plan_rules")
+}
+
+model Reminder {
+  id           String         @id @default(uuid()) @db.Uuid
+  siteId       String         @db.Uuid
+  ruleId       String         @db.Uuid
+  title        String
+  machineId    String         @db.Uuid
+  technicianId String?        @db.Uuid
+  dueDate      DateTime       @db.Date
+  firedAt      DateTime
+  lead         Int
+  channel      String
+  status       ReminderStatus @default(scheduled)
+
+  createdAt DateTime @default(now())
+
+  site Site     @relation(fields: [siteId], references: [id], onDelete: Cascade)
+  rule PlanRule @relation(fields: [ruleId], references: [id], onDelete: Cascade)
+
+  @@index([siteId, firedAt])
+  @@map("reminders")
 }
 
 // ── Files (Supabase Storage references) ──────────────────────────────────────

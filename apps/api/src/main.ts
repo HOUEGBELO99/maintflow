@@ -42,8 +42,10 @@ async function bootstrap(): Promise<void> {
     SwaggerModule.setup('docs', app, SwaggerModule.createDocument(app, config));
   }
 
-  const port = process.env.API_PORT ?? 4000;
-  await app.listen(port);
+  // Hosts (Railway/Render/Fly) inject PORT; fall back to API_PORT locally.
+  // Bind 0.0.0.0 so the container is reachable.
+  const port = process.env.PORT ?? process.env.API_PORT ?? 4000;
+  await app.listen(port, '0.0.0.0');
 }
 
 void bootstrap();

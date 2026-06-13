@@ -1,0 +1,42 @@
+# Render Blueprint for the MaintFlow API (NestJS).
+# New → Blueprint → connect this repo. Secrets (sync: false) are filled in the
+# Render dashboard. The web app is deployed separately on Vercel.
+services:
+  - type: web
+    name: maintflow-api
+    runtime: node
+    plan: starter
+    # Monorepo: build from the repo root so the pnpm workspace + @maintflow/shared resolve.
+    buildCommand: >-
+      corepack enable &&
+      pnpm install --frozen-lockfile &&
+      pnpm --filter @maintflow/api db:generate &&
+      pnpm build --filter @maintflow/api...
+    # Run migrations once per deploy (not per instance) before traffic shifts.
+    preDeployCommand: pnpm --filter @maintflow/api exec prisma migrate deploy
+    startCommand: node apps/api/dist/main.js
+    healthCheckPath: /api/v1/health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: ACCESS_TOKEN_AUDIENCE
+        value: authenticated
+      - key: SUPABASE_STORAGE_BUCKET
+        value: maintflow-files
+      # Secrets / per-environment — set these in the Render dashboard:
+      - key: DATABASE_URL # Supabase pooled (6543)
+        sync: false
+      - key: DIRECT_URL # Supabase direct (5432), for migrations
+        sync: false
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        sync: false
+      - key: SUPABASE_JWT_SECRET
+        sync: false
+      - key: REDIS_URL # Upstash
+        sync: false
+      - key: JWT_ISSUER # https://<project>.supabase.co/auth/v1
+        sync: false
+      - key: WEB_URL # deployed Vercel origin (CORS allow-list)
+        sync: false

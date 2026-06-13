@@ -18,7 +18,7 @@ export class PermissionsGuard implements CanActivate {
     ]);
     if (!required || required.length === 0) return true;
 
-    const user = context.switchToHttp().getRequest().user as AuthUser | undefined;
+    const user = context.switchToHttp().getRequest<{ user?: AuthUser }>().user;
     if (!user) throw new ForbiddenException('No authenticated user');
 
     const ok = required.every((perm) => roleHasPermission(user.role, perm));
