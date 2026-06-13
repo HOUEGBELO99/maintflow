@@ -13,6 +13,7 @@ describe('PlanningService', () => {
       findFirst: jest.fn(),
       create: jest.fn(),
       update: jest.fn() as jest.Mock<Promise<unknown>, [{ where: unknown; data: { nextDue: Date } }]>,
+      delete: jest.fn(),
     },
     reminder: {
       findMany: jest.fn(),
@@ -87,5 +88,18 @@ describe('PlanningService', () => {
     await expect(service.updateRule('site-1', 'missing', { active: false })).rejects.toBeInstanceOf(
       NotFoundException,
     );
+  });
+
+  it('deletes a rule scoped to the tenant', async () => {
+    prisma.planRule.findFirst.mockResolvedValue({ id: 'r1', siteId: 'site-1' });
+    prisma.planRule.delete.mockResolvedValue({ id: 'r1' });
+    await expect(service.deleteRule('site-1', 'r1')).resolves.toEqual({ id: 'r1', deleted: true });
+    expect(prisma.planRule.delete).toHaveBeenCalledWith({ where: { id: 'r1' } });
+  });
+
+  it('throws when deleting a rule outside the tenant', async () => {
+    prisma.planRule.findFirst.mockResolvedValue(null);
+    await expect(service.deleteRule('site-1', 'missing')).rejects.toBeInstanceOf(NotFoundException);
+    expect(prisma.planRule.delete).not.toHaveBeenCalled();
   });
 });

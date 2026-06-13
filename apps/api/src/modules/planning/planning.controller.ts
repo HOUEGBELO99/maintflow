@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, ParseUUIDPipe, Patch, Post } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, ParseUUIDPipe, Patch, Post } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 
 import { Permission } from '@maintflow/shared';
@@ -52,5 +52,11 @@ export class PlanningController {
   @RequirePermission(Permission.MANAGE_INTERVENTIONS)
   scheduleNow(@CurrentUser() user: AuthUser, @Param('id', ParseUUIDPipe) id: string) {
     return this.planning.scheduleNow(user.siteId, id);
+  }
+
+  @Delete('rules/:id')
+  @RequirePermission(Permission.MANAGE_INTERVENTIONS)
+  deleteRule(@CurrentUser() user: AuthUser, @Param('id', ParseUUIDPipe) id: string) {
+    return this.planning.deleteRule(user.siteId, id);
   }
 }

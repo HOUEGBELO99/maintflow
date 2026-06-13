@@ -210,6 +210,8 @@ export const api = {
       request<PlanRule>(`/planning/rules/${id}`, { method: 'PATCH', body: JSON.stringify(body) }),
     schedule: (id: string) =>
       request<PlanRule>(`/planning/rules/${id}/schedule`, { method: 'POST' }),
+    deleteRule: (id: string) =>
+      request<{ id: string; deleted: boolean }>(`/planning/rules/${id}`, { method: 'DELETE' }),
   },
   admin: {
     resetDemo: () => request<{ site: string }>('/admin/reset-demo', { method: 'POST' }),
