@@ -1,6 +1,15 @@
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { createClient } from '@supabase/supabase-js';
+import { WebSocket as WsWebSocket } from 'ws';
+
+// Node < 22 has no global WebSocket, which @supabase/supabase-js's realtime
+// client requires at construction — even though we only use Storage here.
+// Polyfill it from `ws` so the client can be created on Node 20 (Render).
+const globalWithWs = globalThis as unknown as { WebSocket?: unknown };
+if (!globalWithWs.WebSocket) {
+  globalWithWs.WebSocket = WsWebSocket;
+}
 
 /**
  * Thin wrapper over Supabase Storage using the service-role key (server-only).
