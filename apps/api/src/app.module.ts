@@ -17,8 +17,9 @@ import { UsersModule } from './modules/users/users.module';
 import { TechniciansModule } from './modules/technicians/technicians.module';
 import { PlanningModule } from './modules/planning/planning.module';
 import { AdminModule } from './modules/admin/admin.module';
+import { FilesModule } from './modules/files/files.module';
 // import the remaining feature modules as they are implemented:
-// PartsModule, ReportsModule, NotificationsModule, FilesModule
+// PartsModule, ReportsModule, NotificationsModule
 
 @Module({
   imports: [
@@ -51,6 +52,7 @@ import { AdminModule } from './modules/admin/admin.module';
     TechniciansModule,
     PlanningModule,
     AdminModule,
+    FilesModule,
   ],
   providers: [
     // Auth is ON by default everywhere; opt out per-route with @Public().
