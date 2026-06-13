@@ -23,6 +23,20 @@ export class AuthService {
     private readonly prisma: PrismaService,
   ) {}
 
+  /**
+   * Full application profile for an authenticated user. The JWT guard only
+   * attaches { id, email, role, siteId }; clients call this after a Supabase
+   * sign-in to hydrate the session (notably `name`).
+   */
+  async getProfile(userId: string): Promise<DevLoginResult['user']> {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { id: true, email: true, name: true, role: true, siteId: true },
+    });
+    if (!user) throw new NotFoundException('User not found');
+    return { ...user, role: user.role as UserRole };
+  }
+
   async devLogin(email: string): Promise<DevLoginResult> {
     const user = await this.prisma.user.findUnique({ where: { email } });
     if (!user) throw new NotFoundException(`No user with email ${email}`);

@@ -1,7 +1,8 @@
-import { Body, Controller, ForbiddenException, Post } from '@nestjs/common';
+import { Body, Controller, ForbiddenException, Get, Post } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { ApiOperation, ApiTags } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 
+import { CurrentUser, type AuthUser } from '../../common/decorators/current-user.decorator';
 import { Public } from '../../common/decorators/public.decorator';
 import { AuthService } from './auth.service';
 import { DevLoginDto } from './dto/dev-login.dto';
@@ -13,6 +14,18 @@ export class AuthController {
     private readonly auth: AuthService,
     private readonly config: ConfigService,
   ) {}
+
+  /**
+   * The authenticated user's application profile. Clients call this after a
+   * Supabase sign-in to hydrate the session (role, siteId, name). Authenticated
+   * by the global JwtAuthGuard; no special permission required.
+   */
+  @Get('me')
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Current authenticated user profile' })
+  me(@CurrentUser() user: AuthUser) {
+    return this.auth.getProfile(user.id);
+  }
 
   /**
    * DEV ONLY. Issues a Supabase-shaped token for a seeded user so the web/mobile

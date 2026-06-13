@@ -15,22 +15,25 @@ class LoginScreen extends ConsumerStatefulWidget {
 
 class _LoginScreenState extends ConsumerState<LoginScreen> {
   final _email = TextEditingController(text: 's.diallo@usine.fr');
+  final _password = TextEditingController();
+  bool _obscure = true;
 
   @override
   void dispose() {
     _email.dispose();
+    _password.dispose();
     super.dispose();
   }
 
   Future<void> _signIn() async {
     await ref
         .read(authControllerProvider.notifier)
-        .signInDev(_email.text.trim());
+        .signIn(_email.text.trim(), _password.text);
     final state = ref.read(authControllerProvider);
     if (state.hasError && mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Connexion impossible — vérifiez l’e-mail.'),
+          content: Text('Connexion impossible — vérifiez vos identifiants.'),
         ),
       );
     }
@@ -97,39 +100,39 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     ),
                     const SizedBox(height: 22),
                     const _FieldLabel('Mot de passe'),
-                    Container(
-                      padding: const EdgeInsets.only(bottom: 11),
-                      decoration: const BoxDecoration(
-                        border:
-                            Border(bottom: BorderSide(color: AppColors.line)),
+                    TextField(
+                      controller: _password,
+                      obscureText: _obscure,
+                      autocorrect: false,
+                      enableSuggestions: false,
+                      onSubmitted: (_) => _signIn(),
+                      style: const TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w500,
                       ),
-                      child: const Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Text(
-                            '•••••••••',
-                            style: TextStyle(fontSize: 15, letterSpacing: 4),
-                          ),
-                          Icon(
-                            Icons.visibility_outlined,
-                            size: 16,
+                      decoration: InputDecoration(
+                        isDense: true,
+                        contentPadding: const EdgeInsets.only(bottom: 11),
+                        enabledBorder: const UnderlineInputBorder(
+                          borderSide: BorderSide(color: AppColors.line),
+                        ),
+                        focusedBorder: const UnderlineInputBorder(
+                          borderSide:
+                              BorderSide(color: AppColors.ink, width: 1.5),
+                        ),
+                        suffixIcon: IconButton(
+                          onPressed: () => setState(() => _obscure = !_obscure),
+                          icon: Icon(
+                            _obscure
+                                ? Icons.visibility_outlined
+                                : Icons.visibility_off_outlined,
+                            size: 18,
                             color: AppColors.mute,
                           ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    const Align(
-                      alignment: Alignment.centerRight,
-                      child: Text(
-                        'Mot de passe oublié ?',
-                        style: TextStyle(
-                          fontSize: 12.5,
-                          color: AppColors.mute,
-                          fontWeight: FontWeight.w500,
                         ),
                       ),
                     ),
+                    const SizedBox(height: 12),
                     const Spacer(),
                     _PrimaryCta(
                       label: 'Se connecter',

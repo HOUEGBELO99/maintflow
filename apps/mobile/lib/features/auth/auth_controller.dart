@@ -14,10 +14,10 @@ class AuthController extends AsyncNotifier<SessionUser?> {
   @override
   Future<SessionUser?> build() => ref.read(sessionStoreProvider).load();
 
-  Future<void> signInDev(String email) async {
+  Future<void> signIn(String email, String password) async {
     state = const AsyncLoading<SessionUser?>();
     state = await AsyncValue.guard(
-      () => ref.read(authRepositoryProvider).devLogin(email),
+      () => ref.read(authRepositoryProvider).signIn(email, password),
     );
   }
 
