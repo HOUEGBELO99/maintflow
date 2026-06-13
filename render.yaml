@@ -5,15 +5,18 @@ services:
   - type: web
     name: maintflow-api
     runtime: node
-    plan: starter
+    # Free tier for testing (no card required). Note: free instances spin down
+    # after ~15 min idle, so the first request after a pause is slow.
+    plan: free
     # Monorepo: build from the repo root so the pnpm workspace + @maintflow/shared resolve.
     buildCommand: >-
       corepack enable &&
       pnpm install --frozen-lockfile &&
       pnpm --filter @maintflow/api db:generate &&
       pnpm build --filter @maintflow/api...
-    # Run migrations once per deploy (not per instance) before traffic shifts.
-    preDeployCommand: pnpm --filter @maintflow/api exec prisma migrate deploy
+    # Note: preDeployCommand (prisma migrate deploy) is a paid-plan feature.
+    # On the free tier we run migrations manually (pnpm db:deploy) instead —
+    # already applied for this project. Re-add it when moving to a paid plan.
     startCommand: node apps/api/dist/main.js
     healthCheckPath: /api/v1/health
     envVars:
