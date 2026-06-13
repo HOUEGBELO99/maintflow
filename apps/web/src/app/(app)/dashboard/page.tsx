@@ -324,11 +324,17 @@ interface TrendDay {
   faults: number;
 }
 function buildTrend(faults: Fault[], interventions: Intervention[]): TrendDay[] {
+  const todayIso = new Date().toISOString().slice(0, 10);
+  // Anchor the 14-day window to the most recent *past* activity. Preventive
+  // interventions can be scheduled far in the future (next due date pushed out
+  // by recurrence), which would otherwise drag the window into an empty range.
   const dates = [
     ...faults.map((f) => f.reportedAt.slice(0, 10)),
     ...interventions.map((i) => i.scheduledFor.slice(0, 10)),
-  ].sort();
-  const endIso = dates.length ? dates[dates.length - 1]! : new Date().toISOString().slice(0, 10);
+  ]
+    .filter((d) => d <= todayIso)
+    .sort();
+  const endIso = dates.length ? dates[dates.length - 1]! : todayIso;
   const end = new Date(`${endIso}T00:00:00`);
   const days: TrendDay[] = [];
   for (let i = 13; i >= 0; i--) {
