@@ -1,9 +1,8 @@
 import { ExecutionContext, UnauthorizedException } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
 import { Reflector } from '@nestjs/core';
-import { JwtService } from '@nestjs/jwt';
 
 import { PrismaService } from '../../modules/prisma/prisma.service';
+import { SupabaseTokenVerifier } from '../auth/supabase-token.verifier';
 import { JwtAuthGuard } from './jwt-auth.guard';
 
 /**
@@ -14,8 +13,7 @@ import { JwtAuthGuard } from './jwt-auth.guard';
 describe('JwtAuthGuard', () => {
   let guard: JwtAuthGuard;
   const reflector = { getAllAndOverride: jest.fn() };
-  const jwt = { verifyAsync: jest.fn() };
-  const config = { getOrThrow: jest.fn().mockReturnValue('secret'), get: jest.fn() };
+  const tokens = { verify: jest.fn() };
   const prisma = { user: { findUnique: jest.fn() } };
 
   const activeProfile = {
@@ -42,8 +40,7 @@ describe('JwtAuthGuard', () => {
     jest.clearAllMocks();
     guard = new JwtAuthGuard(
       reflector as unknown as Reflector,
-      jwt as unknown as JwtService,
-      config as unknown as ConfigService,
+      tokens as unknown as SupabaseTokenVerifier,
       prisma as unknown as PrismaService,
     );
   });
@@ -52,7 +49,7 @@ describe('JwtAuthGuard', () => {
     reflector.getAllAndOverride.mockReturnValue(true);
     const { ctx } = ctxWith();
     await expect(guard.canActivate(ctx)).resolves.toBe(true);
-    expect(jwt.verifyAsync).not.toHaveBeenCalled();
+    expect(tokens.verify).not.toHaveBeenCalled();
   });
 
   it('rejects a request with no bearer token', async () => {
@@ -63,14 +60,14 @@ describe('JwtAuthGuard', () => {
 
   it('rejects an invalid/expired token', async () => {
     reflector.getAllAndOverride.mockReturnValue(false);
-    jwt.verifyAsync.mockRejectedValue(new Error('bad signature'));
+    tokens.verify.mockRejectedValue(new UnauthorizedException('bad signature'));
     const { ctx } = ctxWith('Bearer tampered');
     await expect(guard.canActivate(ctx)).rejects.toBeInstanceOf(UnauthorizedException);
   });
 
   it('rejects when the user is unknown or inactive', async () => {
     reflector.getAllAndOverride.mockReturnValue(false);
-    jwt.verifyAsync.mockResolvedValue({ sub: 'user-1' });
+    tokens.verify.mockResolvedValue({ sub: 'user-1' });
     prisma.user.findUnique.mockResolvedValue({ ...activeProfile, status: 'inactive' });
     const { ctx } = ctxWith('Bearer valid');
     await expect(guard.canActivate(ctx)).rejects.toBeInstanceOf(UnauthorizedException);
@@ -78,7 +75,7 @@ describe('JwtAuthGuard', () => {
 
   it('attaches the DB profile (siteId/role) for a valid active user', async () => {
     reflector.getAllAndOverride.mockReturnValue(false);
-    jwt.verifyAsync.mockResolvedValue({ sub: 'user-1', email: 'tech@site.fr' });
+    tokens.verify.mockResolvedValue({ sub: 'user-1', email: 'tech@site.fr' });
     prisma.user.findUnique.mockResolvedValue(activeProfile);
     const { ctx, req } = ctxWith('Bearer valid');
 
