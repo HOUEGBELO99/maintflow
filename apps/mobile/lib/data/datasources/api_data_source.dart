@@ -36,4 +36,28 @@ class ApiDataSource {
   Future<List<Machine>> fetchMachines() => _list('/machines', Machine.fromJson);
 
   Future<List<Fault>> fetchFaults() => _list('/faults', Fault.fromJson);
+
+  /// Create a fault online and return its server id (needed to attach a photo).
+  /// Used only for the photo path; the offline path goes through the sync queue.
+  Future<String> createFault(Map<String, dynamic> body) async {
+    final res = await _dio.post<Map<String, dynamic>>('/faults', data: body);
+    return res.data!['id'] as String;
+  }
+
+  /// Upload a photo for a fault (multipart → `POST /files/faults/:id`).
+  Future<void> uploadFaultPhoto(
+    String faultId, {
+    required List<int> bytes,
+    required String filename,
+    required String mimeType,
+  }) async {
+    final form = FormData.fromMap({
+      'file': MultipartFile.fromBytes(
+        bytes,
+        filename: filename,
+        contentType: DioMediaType.parse(mimeType),
+      ),
+    });
+    await _dio.post<dynamic>('/files/faults/$faultId', data: form);
+  }
 }

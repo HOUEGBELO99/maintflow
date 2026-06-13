@@ -3,8 +3,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import 'package:maintflow_mobile/core/theme/app_theme.dart';
+import 'package:maintflow_mobile/data/datasources/api_data_source.dart';
 import 'package:maintflow_mobile/data/models/enums.dart';
 import 'package:maintflow_mobile/data/models/machine.dart';
+import 'package:maintflow_mobile/data/photos/photo_picker.dart';
 import 'package:maintflow_mobile/data/repositories/sync_service.dart';
 import 'package:maintflow_mobile/features/missions/missions_providers.dart';
 
@@ -55,10 +57,11 @@ const _severityOptions = <(FaultSeverity severity, String label)>[
 ];
 
 /// "Signaler une panne" — the technician declares a fault on a (usually
-/// scanned) machine. Mirrors the prototype `ReportScreen`: fault type, severity
-/// and a description. The fault is created offline-first via [SyncService] (the
-/// POST is queued and replayed on reconnect). Photo capture awaits the API
-/// `files` module, so it is intentionally out of scope here.
+/// scanned) machine. Mirrors the prototype `ReportScreen`: fault type, severity,
+/// description and an optional photo. Without a photo the fault is created
+/// offline-first via [SyncService] (queued, replayed on reconnect). With a photo
+/// it goes online — create the fault, then upload to `POST /files/faults/:id`
+/// (the upload needs the server id) — and surfaces an error if offline.
 class ReportScreen extends ConsumerStatefulWidget {
   const ReportScreen({required this.machineId, super.key});
 
@@ -72,7 +75,13 @@ class _ReportScreenState extends ConsumerState<ReportScreen> {
   FaultType _type = FaultType.electrique;
   FaultSeverity _severity = FaultSeverity.medium;
   final _description = TextEditingController();
+  PickedPhoto? _photo;
   bool _submitting = false;
+
+  Future<void> _pickPhoto() async {
+    final photo = await ref.read(photoPickerProvider).capture();
+    if (photo != null && mounted) setState(() => _photo = photo);
+  }
 
   @override
   void initState() {
@@ -91,14 +100,38 @@ class _ReportScreenState extends ConsumerState<ReportScreen> {
   Future<void> _submit() async {
     if (!_valid || _submitting) return;
     setState(() => _submitting = true);
-    await ref.read(syncServiceProvider).reportFault(
-          buildCreateFaultBody(
-            machineId: widget.machineId,
-            type: _type,
-            severity: _severity,
-            description: _description.text,
-          ),
+    final body = buildCreateFaultBody(
+      machineId: widget.machineId,
+      type: _type,
+      severity: _severity,
+      description: _description.text,
+    );
+    final photo = _photo;
+    try {
+      if (photo == null) {
+        // No photo: offline-first via the sync queue.
+        await ref.read(syncServiceProvider).reportFault(body);
+      } else {
+        // With a photo we need the server id, so create online then upload.
+        final api = ref.read(apiDataSourceProvider);
+        final faultId = await api.createFault(body);
+        await api.uploadFaultPhoto(
+          faultId,
+          bytes: photo.bytes,
+          filename: photo.filename,
+          mimeType: photo.mimeType,
         );
+      }
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _submitting = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Envoi impossible — la photo nécessite une connexion.'),
+        ),
+      );
+      return;
+    }
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(content: Text('Panne déclarée')),
@@ -140,8 +173,10 @@ class _ReportScreenState extends ConsumerState<ReportScreen> {
               description: _description,
               valid: _valid,
               submitting: _submitting,
+              hasPhoto: _photo != null,
               onType: (t) => setState(() => _type = t),
               onSeverity: (s) => setState(() => _severity = s),
+              onPickPhoto: _pickPhoto,
               onSubmit: _submit,
             ),
     );
@@ -156,8 +191,10 @@ class _Body extends StatelessWidget {
     required this.description,
     required this.valid,
     required this.submitting,
+    required this.hasPhoto,
     required this.onType,
     required this.onSeverity,
+    required this.onPickPhoto,
     required this.onSubmit,
   });
 
@@ -167,8 +204,10 @@ class _Body extends StatelessWidget {
   final TextEditingController description;
   final bool valid;
   final bool submitting;
+  final bool hasPhoto;
   final ValueChanged<FaultType> onType;
   final ValueChanged<FaultSeverity> onSeverity;
+  final VoidCallback onPickPhoto;
   final VoidCallback onSubmit;
 
   @override
@@ -253,12 +292,87 @@ class _Body extends StatelessWidget {
             ),
           ),
         ),
-        const SizedBox(height: 8),
+        const SizedBox(height: 16),
+        _PhotoButton(
+          hasPhoto: hasPhoto,
+          onTap: submitting ? null : onPickPhoto,
+        ),
+        const SizedBox(height: 16),
         _Cta(
           label: submitting ? 'Envoi…' : 'Déclarer la panne',
           onTap: valid && !submitting ? onSubmit : null,
         ),
       ],
+    );
+  }
+}
+
+class _PhotoButton extends StatelessWidget {
+  const _PhotoButton({required this.hasPhoto, this.onTap});
+
+  final bool hasPhoto;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(12),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        decoration: BoxDecoration(
+          color: hasPhoto ? AppColors.brand50 : AppColors.soft,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: hasPhoto ? AppColors.brand : AppColors.faint,
+            style: hasPhoto ? BorderStyle.solid : BorderStyle.none,
+          ),
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 38,
+              height: 38,
+              decoration: BoxDecoration(
+                color: hasPhoto ? AppColors.brand : AppColors.bg,
+                borderRadius: BorderRadius.circular(9),
+                border: Border.all(
+                  color: hasPhoto ? AppColors.brand : AppColors.line,
+                ),
+              ),
+              child: Icon(
+                hasPhoto ? Icons.check : Icons.photo_camera_outlined,
+                size: 18,
+                color: hasPhoto ? Colors.white : AppColors.ink,
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    hasPhoto ? 'Photo ajoutée' : 'Ajouter une photo',
+                    style: TextStyle(
+                      fontSize: 13.5,
+                      fontWeight: FontWeight.w600,
+                      color: hasPhoto ? AppColors.brandDeep : AppColors.text,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    hasPhoto
+                        ? 'Appuyez pour reprendre'
+                        : 'Prenez le problème en photo (nécessite une connexion)',
+                    style:
+                        const TextStyle(fontSize: 11.5, color: AppColors.mute),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

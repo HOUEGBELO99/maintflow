@@ -67,4 +67,47 @@ void main() {
     expect(missions.single.status, InterventionStatus.inProgress);
     expect(missions.single.kind, InterventionKind.corrective);
   });
+
+  test('createFault posts the body and returns the new id', () async {
+    late RequestOptions captured;
+    final dio = Dio(BaseOptions(baseUrl: 'http://localhost:4000/api/v1'));
+    dio.httpClientAdapter = _FakeAdapter((options) {
+      captured = options;
+      return _ok(<String, dynamic>{'id': 'f-new'});
+    });
+
+    final id = await ApiDataSource(dio).createFault(<String, dynamic>{
+      'machineId': 'm1',
+      'type': 'electrique',
+    });
+
+    expect(captured.path, '/faults');
+    expect(captured.method, 'POST');
+    expect(id, 'f-new');
+  });
+
+  test('uploadFaultPhoto posts multipart to the fault files endpoint',
+      () async {
+    late RequestOptions captured;
+    final dio = Dio(BaseOptions(baseUrl: 'http://localhost:4000/api/v1'));
+    dio.httpClientAdapter = _FakeAdapter((options) {
+      captured = options;
+      return _ok(<String, dynamic>{'id': 'a-1'});
+    });
+
+    await ApiDataSource(dio).uploadFaultPhoto(
+      'f-1',
+      bytes: <int>[1, 2, 3],
+      filename: 'photo.jpg',
+      mimeType: 'image/jpeg',
+    );
+
+    expect(captured.path, '/files/faults/f-1');
+    expect(captured.method, 'POST');
+    expect(captured.data, isA<FormData>());
+    expect(
+      (captured.data as FormData).files.single.value.contentType.toString(),
+      'image/jpeg',
+    );
+  });
 }

@@ -1,9 +1,12 @@
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
+import 'package:maintflow_mobile/data/datasources/api_data_source.dart';
 import 'package:maintflow_mobile/data/models/enums.dart';
 import 'package:maintflow_mobile/data/models/machine.dart';
+import 'package:maintflow_mobile/data/photos/photo_picker.dart';
 import 'package:maintflow_mobile/data/repositories/sync_service.dart';
 import 'package:maintflow_mobile/features/missions/missions_providers.dart';
 import 'package:maintflow_mobile/features/report/report_screen.dart';
@@ -31,6 +34,35 @@ class _RecordingSync implements SyncService {
 
   @override
   noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
+
+class _FakePicker implements PhotoPicker {
+  @override
+  Future<PickedPhoto?> capture() async =>
+      (bytes: <int>[1, 2, 3], filename: 'photo.jpg', mimeType: 'image/jpeg');
+}
+
+class _RecordingApi extends ApiDataSource {
+  _RecordingApi() : super(Dio());
+
+  Map<String, dynamic>? created;
+  String? uploadedFaultId;
+
+  @override
+  Future<String> createFault(Map<String, dynamic> body) async {
+    created = body;
+    return 'f-new';
+  }
+
+  @override
+  Future<void> uploadFaultPhoto(
+    String faultId, {
+    required List<int> bytes,
+    required String filename,
+    required String mimeType,
+  }) async {
+    uploadedFaultId = faultId;
+  }
 }
 
 void main() {
@@ -129,5 +161,54 @@ void main() {
 
     expect(find.text('Machine introuvable.'), findsOneWidget);
     expect(find.text('Déclarer la panne'), findsNothing);
+  });
+
+  testWidgets('with a photo, submit creates the fault online then uploads it',
+      (tester) async {
+    tester.view.physicalSize = const Size(1200, 2800);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    final api = _RecordingApi();
+    final router = GoRouter(
+      initialLocation: '/report',
+      routes: [
+        GoRoute(
+          path: '/report',
+          builder: (_, __) => const ReportScreen(machineId: 'm1'),
+        ),
+        GoRoute(
+          path: '/missions',
+          builder: (_, __) => const Scaffold(body: Text('missions')),
+        ),
+      ],
+    );
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          machinesByIdProvider.overrideWith(
+            (ref) => Stream.value({'m1': _machine}),
+          ),
+          photoPickerProvider.overrideWithValue(_FakePicker()),
+          apiDataSourceProvider.overrideWithValue(api),
+        ],
+        child: MaterialApp.router(routerConfig: router),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.enterText(find.byType(TextField), 'Surchauffe palier moteur');
+    await tester.tap(find.text('Ajouter une photo'));
+    await tester.pumpAndSettle();
+    expect(find.text('Photo ajoutée'), findsOneWidget);
+
+    await tester.tap(find.text('Déclarer la panne'));
+    await tester.pumpAndSettle();
+
+    expect(api.created?['machineId'], 'm1');
+    expect(api.created?['description'], 'Surchauffe palier moteur');
+    expect(api.uploadedFaultId, 'f-new');
   });
 }
