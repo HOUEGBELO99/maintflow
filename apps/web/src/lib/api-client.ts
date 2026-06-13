@@ -1,4 +1,5 @@
 import type {
+  ChecklistItem,
   DashboardKpis,
   Fault,
   FaultSeverity,
@@ -126,6 +127,8 @@ export interface InterventionInput {
   description: string;
   scheduledFor: string;
   duration: number;
+  linkedFaultId?: string;
+  checklist?: ChecklistItem[];
 }
 export interface InterventionUpdate {
   status?: InterventionStatus;
@@ -133,6 +136,12 @@ export interface InterventionUpdate {
   description?: string;
   scheduledFor?: string;
   duration?: number;
+  kind?: InterventionKind;
+  linkedFaultId?: string;
+  checklist?: ChecklistItem[];
+  actualDuration?: number;
+  rating?: number;
+  signedBy?: string;
 }
 
 export const api = {
