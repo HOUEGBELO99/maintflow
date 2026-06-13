@@ -67,6 +67,8 @@ export class InterventionsService {
       ...(dto.actualDuration !== undefined ? { actualDuration: dto.actualDuration } : {}),
       ...(dto.rating !== undefined ? { rating: dto.rating } : {}),
       ...(dto.signedBy !== undefined ? { signedBy: dto.signedBy } : {}),
+      ...(dto.checkInLat !== undefined ? { checkInLat: dto.checkInLat } : {}),
+      ...(dto.checkInLng !== undefined ? { checkInLng: dto.checkInLng } : {}),
       ...(dto.checklist !== undefined
         ? { checklist: dto.checklist as unknown as Prisma.InputJsonValue }
         : {}),

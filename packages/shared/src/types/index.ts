@@ -65,6 +65,9 @@ export interface Intervention {
   actualDuration: number | null;
   rating: number | null;
   signedBy: string | null;
+  /** Technician check-in coordinates, captured when the work is started. */
+  checkInLat: number | null;
+  checkInLng: number | null;
 }
 
 export interface Technician {

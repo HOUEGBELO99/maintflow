@@ -37,6 +37,8 @@ class Intervention with _$Intervention {
     required double? actualDuration,
     required int? rating,
     required String? signedBy,
+    @Default(null) double? checkInLat,
+    @Default(null) double? checkInLng,
   }) = _Intervention;
 
   factory Intervention.fromJson(Map<String, dynamic> json) =>

@@ -6,6 +6,7 @@ import 'package:maintflow_mobile/core/theme/app_theme.dart';
 import 'package:maintflow_mobile/core/widgets/app_pill.dart';
 import 'package:maintflow_mobile/data/models/enums.dart';
 import 'package:maintflow_mobile/data/models/intervention.dart';
+import 'package:maintflow_mobile/data/location/location_service.dart';
 import 'package:maintflow_mobile/data/models/machine.dart';
 import 'package:maintflow_mobile/data/repositories/sync_service.dart';
 import 'package:maintflow_mobile/features/missions/missions_providers.dart';
@@ -76,11 +77,21 @@ class MissionDetailScreen extends ConsumerWidget {
       });
     }
 
-    void setStatus(InterventionStatus status) {
+    // Start the work order, capturing a best-effort check-in location. The
+    // geolocation lookup never blocks the offline-first write: on denial/timeout
+    // it resolves to null and we start without coordinates.
+    Future<void> start() async {
       if (mission == null) return;
-      final updated = mission.copyWith(status: status);
+      final pos = await ref.read(locationServiceProvider).current();
+      final updated = mission.copyWith(
+        status: InterventionStatus.inProgress,
+        checkInLat: pos?.lat,
+        checkInLng: pos?.lng,
+      );
       ref.read(syncServiceProvider).mutateIntervention(updated, {
-        'status': _statusWire[status],
+        'status': _statusWire[InterventionStatus.inProgress],
+        if (pos != null) 'checkInLat': pos.lat,
+        if (pos != null) 'checkInLng': pos.lng,
       });
     }
 
@@ -114,7 +125,7 @@ class MissionDetailScreen extends ConsumerWidget {
               mission: mission,
               machine: machine,
               onToggle: toggle,
-              onStatus: setStatus,
+              onStart: start,
               onClose: () => context.push('/missions/$missionId/close'),
             ),
     );
@@ -125,7 +136,7 @@ class _Body extends StatelessWidget {
   const _Body({
     required this.mission,
     required this.onToggle,
-    required this.onStatus,
+    required this.onStart,
     required this.onClose,
     this.machine,
   });
@@ -133,7 +144,7 @@ class _Body extends StatelessWidget {
   final Intervention mission;
   final Machine? machine;
   final void Function(int index) onToggle;
-  final void Function(InterventionStatus status) onStatus;
+  final VoidCallback onStart;
   final VoidCallback onClose;
 
   @override
@@ -227,7 +238,7 @@ class _Body extends StatelessWidget {
         _ActionButton(
           status: mission.status,
           allDone: allDone,
-          onStatus: onStatus,
+          onStart: onStart,
           onClose: onClose,
         ),
       ],
@@ -241,13 +252,13 @@ class _ActionButton extends StatelessWidget {
   const _ActionButton({
     required this.status,
     required this.allDone,
-    required this.onStatus,
+    required this.onStart,
     required this.onClose,
   });
 
   final InterventionStatus status;
   final bool allDone;
-  final void Function(InterventionStatus status) onStatus;
+  final VoidCallback onStart;
   final VoidCallback onClose;
 
   @override
@@ -255,7 +266,7 @@ class _ActionButton extends StatelessWidget {
     if (status == InterventionStatus.planned) {
       return _Cta(
         label: 'Démarrer l’intervention',
-        onTap: () => onStatus(InterventionStatus.inProgress),
+        onTap: onStart,
       );
     }
     if (status == InterventionStatus.inProgress) {

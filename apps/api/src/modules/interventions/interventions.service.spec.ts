@@ -9,6 +9,8 @@ interface UpdateData {
   status?: InterventionStatus;
   startedAt?: Date;
   completedAt?: Date;
+  checkInLat?: number;
+  checkInLng?: number;
 }
 
 const baseDto = {
@@ -96,5 +98,23 @@ describe('InterventionsService', () => {
     });
     const arg = prisma.intervention.update.mock.calls[0]![0];
     expect(arg.data.completedAt).toBeInstanceOf(Date);
+  });
+
+  it('persists the check-in location on start', async () => {
+    prisma.intervention.findFirst.mockResolvedValue({
+      id: 'i-1',
+      siteId: 'site-1',
+      status: InterventionStatus.PLANNED,
+      startedAt: null,
+    });
+    prisma.intervention.update.mockResolvedValue({});
+    await service.update('site-1', 'i-1', {
+      status: InterventionStatus.IN_PROGRESS,
+      checkInLat: 48.8566,
+      checkInLng: 2.3522,
+    });
+    const arg = prisma.intervention.update.mock.calls[0]![0];
+    expect(arg.data.checkInLat).toBe(48.8566);
+    expect(arg.data.checkInLng).toBe(2.3522);
   });
 });

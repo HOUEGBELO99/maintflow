@@ -33,4 +33,18 @@ export class UpdateInterventionDto extends PartialType(
   @IsOptional()
   @IsString()
   signedBy?: string;
+
+  @ApiPropertyOptional({ example: 48.8566, description: 'Check-in latitude (on start)' })
+  @IsOptional()
+  @IsNumber()
+  @Min(-90)
+  @Max(90)
+  checkInLat?: number;
+
+  @ApiPropertyOptional({ example: 2.3522, description: 'Check-in longitude (on start)' })
+  @IsOptional()
+  @IsNumber()
+  @Min(-180)
+  @Max(180)
+  checkInLng?: number;
 }

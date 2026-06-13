@@ -3,9 +3,31 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:maintflow_mobile/data/models/enums.dart';
 import 'package:maintflow_mobile/data/models/intervention.dart';
+import 'package:maintflow_mobile/data/location/location_service.dart';
 import 'package:maintflow_mobile/data/models/machine.dart';
+import 'package:maintflow_mobile/data/repositories/sync_service.dart';
 import 'package:maintflow_mobile/features/missions/mission_detail_screen.dart';
 import 'package:maintflow_mobile/features/missions/missions_providers.dart';
+
+class _FixedLocation implements LocationService {
+  @override
+  Future<LatLng?> current() async => (lat: 48.8566, lng: 2.3522);
+}
+
+class _RecordingSync implements SyncService {
+  Map<String, dynamic>? patch;
+
+  @override
+  Future<void> mutateIntervention(
+    Intervention updated,
+    Map<String, dynamic> body,
+  ) async {
+    patch = body;
+  }
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
 
 final _machine = Machine(
   id: 'm1',
@@ -64,5 +86,37 @@ void main() {
     expect(find.text('Consignation (LOTO)'), findsOneWidget);
     expect(find.text('Extraction roulement'), findsOneWidget);
     expect(find.text('En cours'), findsOneWidget); // status pill
+  });
+
+  testWidgets('starting a planned mission captures the check-in location',
+      (tester) async {
+    final planned = _mission.copyWith(
+      status: InterventionStatus.planned,
+      checklist: const [ChecklistItem(label: 'Étape', done: false)],
+    );
+    final sync = _RecordingSync();
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          missionsProvider.overrideWith((ref) => Stream.value([planned])),
+          machinesByIdProvider
+              .overrideWith((ref) => Stream.value({'m1': _machine})),
+          locationServiceProvider.overrideWithValue(_FixedLocation()),
+          syncServiceProvider.overrideWithValue(sync),
+        ],
+        child: const MaterialApp(
+          home: MissionDetailScreen(missionId: 'i-0000-aaaa'),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Démarrer l’intervention'));
+    await tester.pumpAndSettle();
+
+    expect(sync.patch?['status'], 'in_progress');
+    expect(sync.patch?['checkInLat'], 48.8566);
+    expect(sync.patch?['checkInLng'], 2.3522);
   });
 }
