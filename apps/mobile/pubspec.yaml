@@ -50,6 +50,10 @@ dependencies:
 
   intl: ^0.19.0
 
+  # Intervention report — generate a PDF and share it (WhatsApp, e-mail…)
+  pdf: ^3.11.1
+  printing: ^5.13.3
+
 dev_dependencies:
   flutter_test:
     sdk: flutter
