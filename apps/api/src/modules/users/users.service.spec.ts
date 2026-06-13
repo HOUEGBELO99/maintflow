@@ -9,7 +9,13 @@ import { UsersService } from './users.service';
 describe('UsersService', () => {
   let service: UsersService;
   const prisma = {
-    user: { findMany: jest.fn(), findFirst: jest.fn(), findUnique: jest.fn(), update: jest.fn(), create: jest.fn() },
+    user: {
+      findMany: jest.fn(),
+      findFirst: jest.fn(),
+      findUnique: jest.fn(),
+      update: jest.fn(),
+      create: jest.fn() as jest.Mock<Promise<unknown>, [{ data: Record<string, unknown> }]>,
+    },
     invitation: {
       findMany: jest.fn(),
       create: jest.fn() as jest.Mock<Promise<unknown>, [{ data: { siteId: string; invitedById: string } }]>,

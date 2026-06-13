@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { createClient, type SupabaseClient } from '@supabase/supabase-js';
+import { createClient } from '@supabase/supabase-js';
 import { WebSocket as WsWebSocket } from 'ws';
 
 // @supabase/supabase-js needs a global WebSocket at construction (realtime),
@@ -27,7 +27,7 @@ export interface InvitedAuthUser {
  */
 @Injectable()
 export class SupabaseAuthAdminService {
-  private readonly client: SupabaseClient;
+  private readonly client: ReturnType<typeof createClient>;
   private readonly redirectTo: string;
 
   constructor(config: ConfigService) {
