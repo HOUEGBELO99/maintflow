@@ -60,6 +60,13 @@ export interface DevLoginResult {
   user: SessionUser;
 }
 
+export interface Attachment {
+  id: string;
+  kind: string;
+  mimeType: string;
+  url: string;
+}
+
 export interface MachineInput {
   code: string;
   name: string;
@@ -168,6 +175,9 @@ export const api = {
       request<Fault>(`/faults/${id}`, { method: 'PATCH', body: JSON.stringify(body) }),
     remove: (id: string) =>
       request<{ id: string; deleted: boolean }>(`/faults/${id}`, { method: 'DELETE' }),
+  },
+  files: {
+    forFault: (faultId: string) => request<Attachment[]>(`/files/faults/${faultId}`),
   },
   interventions: {
     list: () => request<Intervention[]>('/interventions'),

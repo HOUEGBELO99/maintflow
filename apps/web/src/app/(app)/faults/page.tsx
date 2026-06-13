@@ -70,6 +70,7 @@ export default function FaultsPage() {
   const [filterSev, setFilterSev] = useState<'all' | FaultSeverity>('all');
   const [adding, setAdding] = useState(false);
   const [confirmDel, setConfirmDel] = useState<Fault | null>(null);
+  const [photosFor, setPhotosFor] = useState<Fault | null>(null);
 
   const invalidate = () => {
     void qc.invalidateQueries({ queryKey: ['faults'] });
@@ -195,6 +196,15 @@ export default function FaultsPage() {
                     </select>
                   </td>
                   <td className="px-4 py-3 text-right">
+                    {f.hasPhoto && (
+                      <button
+                        onClick={() => setPhotosFor(f)}
+                        title="Voir les photos"
+                        className="mr-1 inline-flex h-8 w-8 items-center justify-center rounded-md text-mute hover:bg-surface-muted hover:text-ink"
+                      >
+                        <Icon name="camera" size={14} />
+                      </button>
+                    )}
                     <button
                       onClick={() => setConfirmDel(f)}
                       title="Supprimer"
@@ -233,7 +243,42 @@ export default function FaultsPage() {
         title="Supprimer cette panne ?"
         body="L’historique de cette panne sera définitivement perdu."
       />
+      <FaultPhotos fault={photosFor} onClose={() => setPhotosFor(null)} />
     </div>
+  );
+}
+
+function FaultPhotos({ fault, onClose }: { fault: Fault | null; onClose: () => void }) {
+  const { data, isLoading, isError } = useQuery({
+    queryKey: ['fault-photos', fault?.id],
+    queryFn: () => api.files.forFault(fault!.id),
+    enabled: !!fault,
+  });
+
+  return (
+    <Modal open={!!fault} onClose={onClose} title="Photos de la panne">
+      {isLoading && <p className="py-6 text-center text-sm text-mute">Chargement…</p>}
+      {isError && (
+        <p className="py-6 text-center text-sm text-critical">Photos indisponibles.</p>
+      )}
+      {data && data.length === 0 && (
+        <p className="py-6 text-center text-sm text-mute">Aucune photo pour cette panne.</p>
+      )}
+      {data && data.length > 0 && (
+        <div className="grid grid-cols-3 gap-2.5">
+          {data.map((a) => (
+            <a key={a.id} href={a.url} target="_blank" rel="noreferrer">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={a.url}
+                alt="Photo de la panne"
+                className="aspect-square w-full rounded-lg border border-line object-cover"
+              />
+            </a>
+          ))}
+        </div>
+      )}
+    </Modal>
   );
 }
 
