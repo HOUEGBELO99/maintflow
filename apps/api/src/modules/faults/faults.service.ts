@@ -21,19 +21,51 @@ export interface FaultFilters {
 export class FaultsService {
   constructor(private readonly prisma: PrismaService) {}
 
-  findAll(siteId: string, filters: FaultFilters = {}) {
+  /** Joins needed to satisfy the shared `Fault` contract (reporter name + hasPhoto). */
+  private static readonly contractInclude = {
+    reportedBy: { select: { name: true } },
+    _count: { select: { attachments: true } },
+  } as const;
+
+  /**
+   * Map a Prisma fault to the shared `Fault` shape: `reportedBy` is the reporter's
+   * display name (the column is `reportedById`), and `hasPhoto` is derived from
+   * the attachments count. Defensive so callers with partial selects don't break.
+   */
+  private serialize(fault: Record<string, unknown>) {
+    const { reportedBy, _count, ...rest } = fault as {
+      reportedBy?: { name?: string };
+      _count?: { attachments?: number };
+      reportedById?: string;
+    } & Record<string, unknown>;
+    return {
+      ...rest,
+      reportedBy: reportedBy?.name ?? rest.reportedById,
+      hasPhoto: (_count?.attachments ?? 0) > 0,
+    };
+  }
+
+  async findAll(siteId: string, filters: FaultFilters = {}) {
     const where: Prisma.FaultWhereInput = { siteId };
     if (filters.status) where.status = filters.status;
     if (filters.machineId) where.machineId = filters.machineId;
     if (filters.severity) where.severity = filters.severity;
     if (filters.type) where.type = filters.type;
-    return this.prisma.fault.findMany({ where, orderBy: { reportedAt: 'desc' } });
+    const faults = await this.prisma.fault.findMany({
+      where,
+      orderBy: { reportedAt: 'desc' },
+      include: FaultsService.contractInclude,
+    });
+    return faults.map((f) => this.serialize(f));
   }
 
   async findOne(siteId: string, id: string) {
-    const fault = await this.prisma.fault.findFirst({ where: { id, siteId } });
+    const fault = await this.prisma.fault.findFirst({
+      where: { id, siteId },
+      include: FaultsService.contractInclude,
+    });
     if (!fault) throw new NotFoundException(`Fault ${id} not found`);
-    return fault;
+    return this.serialize(fault);
   }
 
   async create(siteId: string, reportedById: string, dto: CreateFaultDto) {
@@ -57,7 +89,12 @@ export class FaultsService {
   }
 
   async update(siteId: string, id: string, dto: UpdateFaultDto) {
-    const current = await this.findOne(siteId, id); // ownership + existence
+    // Ownership + the fields the lifecycle stamping needs.
+    const current = await this.prisma.fault.findFirst({
+      where: { id, siteId },
+      select: { id: true, status: true, takenAt: true },
+    });
+    if (!current) throw new NotFoundException(`Fault ${id} not found`);
 
     const data: Prisma.FaultUpdateInput = {
       ...(dto.type !== undefined ? { type: dto.type } : {}),
@@ -78,7 +115,8 @@ export class FaultsService {
       }
     }
 
-    return this.prisma.fault.update({ where: { id }, data });
+    await this.prisma.fault.update({ where: { id }, data });
+    return this.findOne(siteId, id);
   }
 
   async remove(siteId: string, id: string) {

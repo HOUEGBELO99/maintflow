@@ -37,7 +37,26 @@ describe('FaultsService', () => {
     expect(prisma.fault.findMany).toHaveBeenCalledWith({
       where: { siteId: 'site-1', status: FaultStatus.PENDING, machineId: 'm-1' },
       orderBy: { reportedAt: 'desc' },
+      include: {
+        reportedBy: { select: { name: true } },
+        _count: { select: { attachments: true } },
+      },
     });
+  });
+
+  it('serializes to the shared contract (reporter name + hasPhoto)', async () => {
+    prisma.fault.findMany.mockResolvedValue([
+      {
+        id: 'f-1',
+        reportedById: 'u-1',
+        reportedBy: { name: 'L. Moreau' },
+        _count: { attachments: 2 },
+        takenAt: null,
+      },
+    ]);
+    const [fault] = await service.findAll('site-1');
+    expect(fault).toMatchObject({ reportedBy: 'L. Moreau', hasPhoto: true });
+    expect(fault).not.toHaveProperty('_count');
   });
 
   it('throws when a fault is not found in the tenant', async () => {
