@@ -2,6 +2,8 @@ import 'dart:async';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'package:maintflow_mobile/data/datasources/api_data_source.dart';
+import 'package:maintflow_mobile/data/models/attachment.dart';
 import 'package:maintflow_mobile/data/models/enums.dart';
 import 'package:maintflow_mobile/data/models/fault.dart';
 import 'package:maintflow_mobile/data/repositories/missions_repository.dart';
@@ -33,6 +35,24 @@ List<Fault> filterFaults(Iterable<Fault> faults, AlertFilter filter) {
     }
   }).toList();
 }
+
+/// A single cached fault by id (derived from [faultsProvider]).
+final faultByIdProvider =
+    Provider.autoDispose.family<Fault?, String>((ref, id) {
+  final faults = ref.watch(faultsProvider).valueOrNull;
+  if (faults == null) return null;
+  for (final f in faults) {
+    if (f.id == id) return f;
+  }
+  return null;
+});
+
+/// A fault's attachments (with signed URLs), fetched online — photos can't be
+/// served from the offline cache. Reloads when invalidated.
+final faultAttachmentsProvider =
+    FutureProvider.autoDispose.family<List<Attachment>, String>((ref, faultId) {
+  return ref.watch(apiDataSourceProvider).fetchFaultAttachments(faultId);
+});
 
 /// A short "il y a …" label for a past instant. Pure (takes `now`).
 String relativeTime(DateTime time, DateTime now) {

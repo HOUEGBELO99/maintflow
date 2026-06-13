@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import 'package:maintflow_mobile/features/auth/auth_controller.dart';
 import 'package:maintflow_mobile/features/alerts/alerts_screen.dart';
+import 'package:maintflow_mobile/features/alerts/fault_detail_screen.dart';
 import 'package:maintflow_mobile/features/auth/login_screen.dart';
 import 'package:maintflow_mobile/features/machines/home_screen.dart';
 import 'package:maintflow_mobile/features/machines/machine_detail_screen.dart';
@@ -40,6 +41,13 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/alerts',
         builder: (context, state) => const AlertsScreen(),
+        routes: [
+          GoRoute(
+            path: 'faults/:id',
+            builder: (context, state) =>
+                FaultDetailScreen(faultId: state.pathParameters['id']!),
+          ),
+        ],
       ),
       GoRoute(
         path: '/profile',

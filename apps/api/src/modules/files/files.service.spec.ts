@@ -21,6 +21,7 @@ describe('FilesService', () => {
     attachment: {
       create: jest.fn() as jest.Mock<Promise<unknown>, [{ data: Record<string, unknown> }]>,
       findUnique: jest.fn(),
+      findMany: jest.fn(),
     },
   };
   const storage = {
@@ -87,6 +88,31 @@ describe('FilesService', () => {
     await expect(
       service.attachToFault('site-1', 'f-1', image({ size: 11 * 1024 * 1024 })),
     ).rejects.toBeInstanceOf(BadRequestException);
+  });
+
+  it('lists a fault’s attachments with signed URLs, scoped by site', async () => {
+    prisma.fault.findFirst.mockResolvedValue({ id: 'f-1' });
+    prisma.attachment.findMany.mockResolvedValue([
+      { id: 'a-1', storagePath: 'site-1/faults/f-1/x', kind: 'photo', mimeType: 'image/jpeg' },
+    ]);
+
+    const res = await service.listForFault('site-1', 'f-1');
+
+    expect(prisma.attachment.findMany).toHaveBeenCalledWith({
+      where: { faultId: 'f-1' },
+      orderBy: { createdAt: 'desc' },
+    });
+    expect(res).toEqual([
+      expect.objectContaining({ id: 'a-1', url: 'https://signed/url' }),
+    ]);
+  });
+
+  it('refuses to list attachments for a fault outside the tenant', async () => {
+    prisma.fault.findFirst.mockResolvedValue(null);
+    await expect(service.listForFault('site-1', 'foreign')).rejects.toBeInstanceOf(
+      NotFoundException,
+    );
+    expect(prisma.attachment.findMany).not.toHaveBeenCalled();
   });
 
   it('signs a URL only for an attachment in the caller’s site', async () => {

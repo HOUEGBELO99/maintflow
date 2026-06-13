@@ -80,6 +80,35 @@ export class FilesService {
     return this.withSignedUrl(attachment);
   }
 
+  async listForFault(siteId: string, faultId: string): Promise<AttachmentResult[]> {
+    const fault = await this.prisma.fault.findFirst({
+      where: { id: faultId, siteId },
+      select: { id: true },
+    });
+    if (!fault) throw new NotFoundException('Fault not found');
+    const rows = await this.prisma.attachment.findMany({
+      where: { faultId },
+      orderBy: { createdAt: 'desc' },
+    });
+    return Promise.all(rows.map((r) => this.withSignedUrl(r)));
+  }
+
+  async listForIntervention(
+    siteId: string,
+    interventionId: string,
+  ): Promise<AttachmentResult[]> {
+    const intervention = await this.prisma.intervention.findFirst({
+      where: { id: interventionId, siteId },
+      select: { id: true },
+    });
+    if (!intervention) throw new NotFoundException('Intervention not found');
+    const rows = await this.prisma.attachment.findMany({
+      where: { interventionId },
+      orderBy: { createdAt: 'desc' },
+    });
+    return Promise.all(rows.map((r) => this.withSignedUrl(r)));
+  }
+
   async signedUrl(siteId: string, attachmentId: string): Promise<{ url: string }> {
     const attachment = await this.prisma.attachment.findUnique({
       where: { id: attachmentId },

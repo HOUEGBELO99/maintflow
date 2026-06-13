@@ -45,6 +45,24 @@ export class FilesController {
     return this.files.attachToIntervention(user.siteId, interventionId, file);
   }
 
+  @Get('faults/:faultId')
+  @RequirePermission(Permission.VIEW_MACHINES)
+  listForFault(
+    @CurrentUser() user: AuthUser,
+    @Param('faultId', ParseUUIDPipe) faultId: string,
+  ) {
+    return this.files.listForFault(user.siteId, faultId);
+  }
+
+  @Get('interventions/:interventionId')
+  @RequirePermission(Permission.VIEW_MACHINES)
+  listForIntervention(
+    @CurrentUser() user: AuthUser,
+    @Param('interventionId', ParseUUIDPipe) interventionId: string,
+  ) {
+    return this.files.listForIntervention(user.siteId, interventionId);
+  }
+
   @Get(':id/url')
   @RequirePermission(Permission.VIEW_MACHINES)
   signedUrl(@CurrentUser() user: AuthUser, @Param('id', ParseUUIDPipe) id: string) {

@@ -2,6 +2,7 @@ import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:maintflow_mobile/core/network/api_client.dart';
+import 'package:maintflow_mobile/data/models/attachment.dart';
 import 'package:maintflow_mobile/data/models/fault.dart';
 import 'package:maintflow_mobile/data/models/intervention.dart';
 import 'package:maintflow_mobile/data/models/machine.dart';
@@ -36,6 +37,10 @@ class ApiDataSource {
   Future<List<Machine>> fetchMachines() => _list('/machines', Machine.fromJson);
 
   Future<List<Fault>> fetchFaults() => _list('/faults', Fault.fromJson);
+
+  /// Attachments (with signed URLs) for a fault — `GET /files/faults/:id`.
+  Future<List<Attachment>> fetchFaultAttachments(String faultId) =>
+      _list('/files/faults/$faultId', Attachment.fromJson);
 
   /// Create a fault online and return its server id (needed to attach a photo).
   /// Used only for the photo path; the offline path goes through the sync queue.

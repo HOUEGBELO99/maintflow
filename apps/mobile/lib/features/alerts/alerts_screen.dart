@@ -150,7 +150,7 @@ class _AlertsScreenState extends ConsumerState<AlertsScreen> {
                               fault: shown[i],
                               machine: machines[shown[i].machineId],
                               onTap: () => context.push(
-                                '/machines/${shown[i].machineId}',
+                                '/alerts/faults/${shown[i].id}',
                               ),
                             ),
                           ),

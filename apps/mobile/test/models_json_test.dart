@@ -1,4 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:maintflow_mobile/data/models/attachment.dart';
 import 'package:maintflow_mobile/data/models/enums.dart';
 import 'package:maintflow_mobile/data/models/fault.dart';
 import 'package:maintflow_mobile/data/models/intervention.dart';
@@ -72,6 +73,17 @@ void main() {
 
       final reparsed = Intervention.fromJson(intervention.toJson());
       expect(reparsed, intervention);
+    });
+
+    test('Attachment parses the files endpoint payload', () {
+      final att = Attachment.fromJson(<String, dynamic>{
+        'id': 'a1',
+        'kind': 'photo',
+        'mimeType': 'image/jpeg',
+        'url': 'https://signed.example/abc',
+      });
+      expect(att.kind, 'photo');
+      expect(att.url, 'https://signed.example/abc');
     });
   });
 }
