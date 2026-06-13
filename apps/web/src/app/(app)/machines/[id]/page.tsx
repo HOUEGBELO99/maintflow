@@ -81,7 +81,9 @@ export default function MachineDetailPage() {
   const activeFaults = machineFaults.filter((f) => f.status !== 'resolved').length;
   const mtbf = computeMtbfDays(machineFaults);
 
-  const qrValue = typeof window !== 'undefined' ? `${window.location.origin}/machines/${machine.id}` : machine.code;
+  // Encode the machine CODE (e.g. "MCH-001"), not the URL/UUID: the mobile
+  // scanner resolves a scanned payload against its machine cache by code.
+  const qrValue = machine.code;
 
   const tabs: { key: Tab; label: string; count?: number }[] = [
     { key: 'info', label: 'Informations' },
