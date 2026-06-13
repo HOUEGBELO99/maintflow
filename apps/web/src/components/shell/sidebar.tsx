@@ -1,5 +1,6 @@
 'use client';
 
+import Image from 'next/image';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 
@@ -48,9 +49,14 @@ export function Sidebar({
   return (
     <aside className="sticky top-0 flex h-screen flex-col border-r border-nav-border bg-nav-bg text-nav-text">
       <div className="flex items-center gap-2.5 border-b border-nav-border px-[18px] pb-[22px] pt-[18px]">
-        <span className="inline-flex h-8 w-8 items-center justify-center rounded-md bg-brand-deep text-sm font-bold text-brand-bright">
-          M
-        </span>
+        <Image
+          src="/logo-mark.png"
+          alt="MaintFlow"
+          width={41}
+          height={32}
+          priority
+          className="h-8 w-auto"
+        />
         <span className="text-[15px] font-bold tracking-tight text-white">
           Maint<span className="text-brand">Flow</span>
         </span>

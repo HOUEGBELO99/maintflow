@@ -173,22 +173,10 @@ class _Hero extends StatelessWidget {
         children: [
           Row(
             children: [
-              Container(
-                width: 28,
-                height: 28,
-                decoration: BoxDecoration(
-                  color: AppColors.brandBright,
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                alignment: Alignment.center,
-                child: const Text(
-                  'M',
-                  style: TextStyle(
-                    color: AppColors.brandDeep,
-                    fontWeight: FontWeight.w800,
-                    fontSize: 16,
-                  ),
-                ),
+              Image.asset(
+                'assets/logo-mark.png',
+                height: 30,
+                filterQuality: FilterQuality.medium,
               ),
               const SizedBox(width: 10),
               const Text(

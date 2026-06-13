@@ -1,5 +1,6 @@
 'use client';
 
+import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 
@@ -61,9 +62,14 @@ export default function LoginPage() {
         />
         <div className="relative z-10 flex w-full flex-col px-14 py-12">
           <div className="flex items-center gap-2.5">
-            <span className="inline-flex h-9 w-9 items-center justify-center rounded-md bg-brand-deep text-base font-bold text-brand-bright">
-              M
-            </span>
+            <Image
+              src="/logo-mark.png"
+              alt="MaintFlow"
+              width={46}
+              height={36}
+              priority
+              className="h-9 w-auto"
+            />
             <span className="text-[22px] font-bold tracking-tight">
               Maint<span className="text-brand-bright">Flow</span>
             </span>
@@ -110,9 +116,14 @@ export default function LoginPage() {
 
         <form onSubmit={submit} className="m-auto flex w-full max-w-[380px] flex-col gap-3.5">
           <div className="mb-2.5">
-            <span className="inline-flex h-12 w-12 items-center justify-center rounded-lg bg-brand-deep text-xl font-bold text-brand-bright">
-              M
-            </span>
+            <Image
+              src="/logo-mark.png"
+              alt="MaintFlow"
+              width={62}
+              height={48}
+              priority
+              className="h-12 w-auto"
+            />
           </div>
           <h1 className="text-[28px] font-bold tracking-tight">Bienvenue sur MaintFlow</h1>
           <p className="text-sm text-mute">Gestion de maintenance industrielle, centralisée.</p>
