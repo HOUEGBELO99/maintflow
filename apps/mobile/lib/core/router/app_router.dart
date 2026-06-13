@@ -6,6 +6,7 @@ import 'package:maintflow_mobile/features/auth/auth_controller.dart';
 import 'package:maintflow_mobile/features/auth/login_screen.dart';
 import 'package:maintflow_mobile/features/machines/home_screen.dart';
 import 'package:maintflow_mobile/features/machines/machine_detail_screen.dart';
+import 'package:maintflow_mobile/features/missions/close_work_screen.dart';
 import 'package:maintflow_mobile/features/missions/mission_detail_screen.dart';
 import 'package:maintflow_mobile/features/missions/missions_screen.dart';
 import 'package:maintflow_mobile/features/profile/profile_screen.dart';
@@ -52,6 +53,13 @@ final appRouterProvider = Provider<GoRouter>((ref) {
             path: ':id',
             builder: (context, state) =>
                 MissionDetailScreen(missionId: state.pathParameters['id']!),
+            routes: [
+              GoRoute(
+                path: 'close',
+                builder: (context, state) =>
+                    CloseWorkScreen(missionId: state.pathParameters['id']!),
+              ),
+            ],
           ),
         ],
       ),

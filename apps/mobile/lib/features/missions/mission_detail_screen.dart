@@ -115,6 +115,7 @@ class MissionDetailScreen extends ConsumerWidget {
               machine: machine,
               onToggle: toggle,
               onStatus: setStatus,
+              onClose: () => context.push('/missions/$missionId/close'),
             ),
     );
   }
@@ -125,6 +126,7 @@ class _Body extends StatelessWidget {
     required this.mission,
     required this.onToggle,
     required this.onStatus,
+    required this.onClose,
     this.machine,
   });
 
@@ -132,6 +134,7 @@ class _Body extends StatelessWidget {
   final Machine? machine;
   final void Function(int index) onToggle;
   final void Function(InterventionStatus status) onStatus;
+  final VoidCallback onClose;
 
   @override
   Widget build(BuildContext context) {
@@ -225,6 +228,7 @@ class _Body extends StatelessWidget {
           status: mission.status,
           allDone: allDone,
           onStatus: onStatus,
+          onClose: onClose,
         ),
       ],
     );
@@ -238,11 +242,13 @@ class _ActionButton extends StatelessWidget {
     required this.status,
     required this.allDone,
     required this.onStatus,
+    required this.onClose,
   });
 
   final InterventionStatus status;
   final bool allDone;
   final void Function(InterventionStatus status) onStatus;
+  final VoidCallback onClose;
 
   @override
   Widget build(BuildContext context) {
@@ -256,7 +262,7 @@ class _ActionButton extends StatelessWidget {
       return _Cta(
         label:
             allDone ? 'Terminer l’intervention' : 'Validez toutes les tâches',
-        onTap: allDone ? () => onStatus(InterventionStatus.completed) : null,
+        onTap: allDone ? onClose : null,
       );
     }
     return const SizedBox.shrink();
