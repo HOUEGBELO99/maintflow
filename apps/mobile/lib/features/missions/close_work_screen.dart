@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -11,6 +13,7 @@ import 'package:maintflow_mobile/data/models/machine.dart';
 import 'package:maintflow_mobile/data/repositories/sync_service.dart';
 import 'package:maintflow_mobile/features/auth/auth_controller.dart';
 import 'package:maintflow_mobile/features/missions/missions_providers.dart';
+import 'package:maintflow_mobile/features/missions/report_pdf.dart';
 
 const _months = [
   'janv.',
@@ -74,7 +77,11 @@ class _CloseWorkScreenState extends ConsumerState<CloseWorkScreen> {
     super.dispose();
   }
 
-  Future<void> _close(Intervention mission, String signedBy) async {
+  Future<void> _close(
+    Intervention mission,
+    Machine? machine,
+    String signedBy,
+  ) async {
     if (_sig.isEmpty || _submitting) return;
     setState(() => _submitting = true);
     final actual = _actual ?? mission.duration;
@@ -88,6 +95,15 @@ class _CloseWorkScreenState extends ConsumerState<CloseWorkScreen> {
           buildCloseBody(actualDuration: actual, signedBy: signedBy),
         );
     if (!mounted) return;
+    // Generate the report PDF and open the share sheet (WhatsApp, e-mail…).
+    // Best-effort + unawaited so closure persists and navigates regardless.
+    unawaited(
+      shareInterventionReport(
+        mission: updated,
+        machine: machine,
+        technicianName: signedBy,
+      ).catchError((Object _) {}),
+    );
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(content: Text('Intervention clôturée')),
     );
@@ -134,7 +150,7 @@ class _CloseWorkScreenState extends ConsumerState<CloseWorkScreen> {
               actual: _actual ?? mission.duration,
               submitting: _submitting,
               onActual: (v) => setState(() => _actual = v),
-              onClose: () => _close(mission, signedBy),
+              onClose: () => _close(mission, machine, signedBy),
             ),
     );
   }
@@ -304,7 +320,7 @@ class _Body extends StatelessWidget {
             return _Cta(
               label: points.isEmpty
                   ? 'Signez pour clôturer'
-                  : (submitting ? 'Clôture…' : 'Clôturer'),
+                  : (submitting ? 'Clôture…' : 'Clôturer & générer le PDF'),
               onTap: canClose ? onClose : null,
             );
           },

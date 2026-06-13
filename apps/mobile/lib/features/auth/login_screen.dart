@@ -44,113 +44,130 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     final loading = ref.watch(authControllerProvider).isLoading;
     return Scaffold(
       body: SafeArea(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            const Padding(
-              padding: EdgeInsets.fromLTRB(16, 8, 16, 24),
-              child: _Hero(),
-            ),
-            Expanded(
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 28),
+        child: LayoutBuilder(
+          builder: (context, constraints) => SingleChildScrollView(
+            child: ConstrainedBox(
+              constraints: BoxConstraints(minHeight: constraints.maxHeight),
+              child: IntrinsicHeight(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    const Text(
-                      'Bonjour.',
-                      style: TextStyle(
-                        fontSize: 24,
-                        fontWeight: FontWeight.w700,
-                        letterSpacing: -0.6,
-                        color: AppColors.ink,
-                      ),
+                    const Padding(
+                      padding: EdgeInsets.fromLTRB(16, 8, 16, 24),
+                      child: _Hero(),
                     ),
-                    const SizedBox(height: 8),
-                    const Text(
-                      'Connectez-vous pour accéder à votre parc.',
-                      style: TextStyle(
-                        fontSize: 14,
-                        color: AppColors.mute,
-                        height: 1.5,
-                      ),
-                    ),
-                    const SizedBox(height: 28),
-                    const _FieldLabel('E-mail'),
-                    TextField(
-                      controller: _email,
-                      keyboardType: TextInputType.emailAddress,
-                      autocorrect: false,
-                      style: const TextStyle(
-                        fontSize: 15,
-                        fontWeight: FontWeight.w500,
-                      ),
-                      decoration: const InputDecoration(
-                        isDense: true,
-                        contentPadding: EdgeInsets.only(bottom: 11),
-                        enabledBorder: UnderlineInputBorder(
-                          borderSide:
-                              BorderSide(color: AppColors.ink, width: 1.5),
+                    Expanded(
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 28),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            const Text(
+                              'Bonjour.',
+                              style: TextStyle(
+                                fontSize: 24,
+                                fontWeight: FontWeight.w700,
+                                letterSpacing: -0.6,
+                                color: AppColors.ink,
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            const Text(
+                              'Connectez-vous pour accéder à votre parc.',
+                              style: TextStyle(
+                                fontSize: 14,
+                                color: AppColors.mute,
+                                height: 1.5,
+                              ),
+                            ),
+                            const SizedBox(height: 28),
+                            const _FieldLabel('E-mail'),
+                            TextField(
+                              controller: _email,
+                              keyboardType: TextInputType.emailAddress,
+                              autocorrect: false,
+                              style: const TextStyle(
+                                fontSize: 15,
+                                fontWeight: FontWeight.w500,
+                              ),
+                              decoration: const InputDecoration(
+                                isDense: true,
+                                contentPadding: EdgeInsets.only(bottom: 11),
+                                enabledBorder: UnderlineInputBorder(
+                                  borderSide: BorderSide(
+                                    color: AppColors.ink,
+                                    width: 1.5,
+                                  ),
+                                ),
+                                focusedBorder: UnderlineInputBorder(
+                                  borderSide: BorderSide(
+                                    color: AppColors.ink,
+                                    width: 1.5,
+                                  ),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(height: 22),
+                            const _FieldLabel('Mot de passe'),
+                            TextField(
+                              controller: _password,
+                              obscureText: _obscure,
+                              autocorrect: false,
+                              enableSuggestions: false,
+                              onSubmitted: (_) => _signIn(),
+                              style: const TextStyle(
+                                fontSize: 15,
+                                fontWeight: FontWeight.w500,
+                              ),
+                              decoration: InputDecoration(
+                                isDense: true,
+                                contentPadding:
+                                    const EdgeInsets.only(bottom: 11),
+                                enabledBorder: const UnderlineInputBorder(
+                                  borderSide: BorderSide(color: AppColors.line),
+                                ),
+                                focusedBorder: const UnderlineInputBorder(
+                                  borderSide: BorderSide(
+                                    color: AppColors.ink,
+                                    width: 1.5,
+                                  ),
+                                ),
+                                suffixIcon: IconButton(
+                                  onPressed: () =>
+                                      setState(() => _obscure = !_obscure),
+                                  icon: Icon(
+                                    _obscure
+                                        ? Icons.visibility_outlined
+                                        : Icons.visibility_off_outlined,
+                                    size: 18,
+                                    color: AppColors.mute,
+                                  ),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(height: 12),
+                            const Spacer(),
+                            _PrimaryCta(
+                              label: 'Se connecter',
+                              loading: loading,
+                              onTap: _signIn,
+                            ),
+                            const SizedBox(height: 10),
+                            _GhostCta(
+                              label: 'Scanner mon invitation',
+                              icon: Icons.qr_code_scanner,
+                              onTap: () {},
+                            ),
+                            const SizedBox(height: 8),
+                          ],
                         ),
-                        focusedBorder: UnderlineInputBorder(
-                          borderSide:
-                              BorderSide(color: AppColors.ink, width: 1.5),
-                        ),
                       ),
                     ),
-                    const SizedBox(height: 22),
-                    const _FieldLabel('Mot de passe'),
-                    TextField(
-                      controller: _password,
-                      obscureText: _obscure,
-                      autocorrect: false,
-                      enableSuggestions: false,
-                      onSubmitted: (_) => _signIn(),
-                      style: const TextStyle(
-                        fontSize: 15,
-                        fontWeight: FontWeight.w500,
-                      ),
-                      decoration: InputDecoration(
-                        isDense: true,
-                        contentPadding: const EdgeInsets.only(bottom: 11),
-                        enabledBorder: const UnderlineInputBorder(
-                          borderSide: BorderSide(color: AppColors.line),
-                        ),
-                        focusedBorder: const UnderlineInputBorder(
-                          borderSide:
-                              BorderSide(color: AppColors.ink, width: 1.5),
-                        ),
-                        suffixIcon: IconButton(
-                          onPressed: () => setState(() => _obscure = !_obscure),
-                          icon: Icon(
-                            _obscure
-                                ? Icons.visibility_outlined
-                                : Icons.visibility_off_outlined,
-                            size: 18,
-                            color: AppColors.mute,
-                          ),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    const Spacer(),
-                    _PrimaryCta(
-                      label: 'Se connecter',
-                      loading: loading,
-                      onTap: _signIn,
-                    ),
-                    const SizedBox(height: 10),
-                    _GhostCta(
-                      label: 'Scanner mon invitation',
-                      icon: Icons.qr_code_scanner,
-                      onTap: () {},
-                    ),
-                    const SizedBox(height: 8),
                   ],
                 ),
               ),
             ),
-          ],
+          ),
         ),
       ),
     );

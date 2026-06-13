@@ -147,8 +147,8 @@ void main() {
     await gesture.up();
     await tester.pumpAndSettle();
 
-    expect(find.text('Clôturer'), findsOneWidget);
-    await tester.tap(find.text('Clôturer'));
+    expect(find.text('Clôturer & générer le PDF'), findsOneWidget);
+    await tester.tap(find.text('Clôturer & générer le PDF'));
     await tester.pump();
 
     expect(sync.updated?.status, InterventionStatus.completed);
