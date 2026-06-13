@@ -1,4 +1,5 @@
 import type {
+  ChecklistItem,
   DashboardKpis,
   Fault,
   FaultSeverity,
@@ -126,6 +127,8 @@ export interface InterventionInput {
   description: string;
   scheduledFor: string;
   duration: number;
+  linkedFaultId?: string;
+  checklist?: ChecklistItem[];
 }
 export interface InterventionUpdate {
   status?: InterventionStatus;
@@ -133,6 +136,12 @@ export interface InterventionUpdate {
   description?: string;
   scheduledFor?: string;
   duration?: number;
+  kind?: InterventionKind;
+  linkedFaultId?: string;
+  checklist?: ChecklistItem[];
+  actualDuration?: number;
+  rating?: number;
+  signedBy?: string;
 }
 
 export const api = {
@@ -201,6 +210,8 @@ export const api = {
       request<PlanRule>(`/planning/rules/${id}`, { method: 'PATCH', body: JSON.stringify(body) }),
     schedule: (id: string) =>
       request<PlanRule>(`/planning/rules/${id}/schedule`, { method: 'POST' }),
+    deleteRule: (id: string) =>
+      request<{ id: string; deleted: boolean }>(`/planning/rules/${id}`, { method: 'DELETE' }),
   },
   admin: {
     resetDemo: () => request<{ site: string }>('/admin/reset-demo', { method: 'POST' }),

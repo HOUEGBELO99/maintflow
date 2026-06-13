@@ -1,5 +1,7 @@
 'use client';
 
+import type { Route } from 'next';
+import Image from 'next/image';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 
@@ -48,9 +50,14 @@ export function Sidebar({
   return (
     <aside className="sticky top-0 flex h-screen flex-col border-r border-nav-border bg-nav-bg text-nav-text">
       <div className="flex items-center gap-2.5 border-b border-nav-border px-[18px] pb-[22px] pt-[18px]">
-        <span className="inline-flex h-8 w-8 items-center justify-center rounded-md bg-brand-deep text-sm font-bold text-brand-bright">
-          M
-        </span>
+        <Image
+          src="/logo-mark.png"
+          alt="MaintFlow"
+          width={41}
+          height={32}
+          priority
+          className="h-8 w-auto"
+        />
         <span className="text-[15px] font-bold tracking-tight text-white">
           Maint<span className="text-brand">Flow</span>
         </span>
@@ -69,7 +76,7 @@ export function Sidebar({
                 return (
                   <Link
                     key={it.key}
-                    href={it.href}
+                    href={it.href as Route}
                     className={`relative flex items-center gap-3 rounded-md px-3 py-[9px] text-[13.5px] font-medium transition-colors ${
                       active ? 'bg-[rgba(0,255,0,0.10)] text-white' : 'text-nav-text hover:bg-nav-soft'
                     }`}

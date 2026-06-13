@@ -1,6 +1,8 @@
 'use client';
 
 import { useQuery } from '@tanstack/react-query';
+import type { Route } from 'next';
+import Link from 'next/link';
 
 import { Icon } from '@/components/icon';
 import { api } from '@/lib/api-client';
@@ -196,10 +198,11 @@ function WorkshopHeatmap({ machines }: { machines: Machine[] }) {
               </div>
               <div className="flex flex-wrap gap-1.5">
                 {ms.map((m) => (
-                  <div
+                  <Link
                     key={m.id}
+                    href={`/machines/${m.id}` as Route}
                     title={`${m.code} — ${m.name} · ${STATE_LABEL[m.state]}`}
-                    className="relative inline-flex h-[38px] w-[38px] items-center justify-center rounded-lg"
+                    className="relative inline-flex h-[38px] w-[38px] items-center justify-center rounded-lg transition-transform hover:scale-110"
                     style={{
                       background: STATE_FILL[m.state],
                       boxShadow: m.state === 'fault' ? '0 0 0 2px rgba(220,38,38,0.25)' : 'none',
@@ -211,7 +214,7 @@ function WorkshopHeatmap({ machines }: { machines: Machine[] }) {
                     {m.criticality === 'high' && (
                       <span className="absolute right-[3px] top-[3px] h-[5px] w-[5px] rounded-full bg-white/90" />
                     )}
-                  </div>
+                  </Link>
                 ))}
               </div>
             </div>
@@ -462,11 +465,14 @@ function Donut({ data }: { data: { type: string; count: number }[] }) {
   );
 }
 
-function HeaderLink({ children }: { children: React.ReactNode }) {
+function HeaderLink({ href, children }: { href: Route; children: React.ReactNode }) {
   return (
-    <button className="inline-flex items-center gap-1 rounded-sm px-2.5 py-[5px] text-xs font-semibold text-mute transition hover:bg-surface-muted hover:text-ink">
-      {children} <Icon name="logout" size={12} />
-    </button>
+    <Link
+      href={href}
+      className="inline-flex items-center gap-1 rounded-sm px-2.5 py-[5px] text-xs font-semibold text-mute transition hover:bg-surface-muted hover:text-ink"
+    >
+      {children} <Icon name="arrowRight" size={12} />
+    </Link>
   );
 }
 
@@ -567,13 +573,13 @@ export default function DashboardPage() {
               </h3>
               <div className="mt-0.5 text-xs text-mute">{criticalAlerts.length} en cours</div>
             </div>
-            <HeaderLink>Voir</HeaderLink>
+            <HeaderLink href="/faults">Voir</HeaderLink>
           </div>
           {criticalAlerts.length === 0 ? (
             <div className="px-5 py-[60px] text-center text-mute">Aucune alerte critique 🎉</div>
           ) : (
             criticalAlerts.map((f) => (
-              <div key={f.id} className="flex items-center gap-3 border-t border-line px-5 py-3">
+              <Link key={f.id} href={`/machines/${f.machineId}` as Route} className="flex items-center gap-3 border-t border-line px-5 py-3 hover:bg-surface-soft">
                 <span className="w-1 self-stretch rounded-[2px] bg-critical" />
                 <div className="min-w-0 flex-1">
                   <div className="mb-0.5 flex items-center gap-2">
@@ -583,7 +589,7 @@ export default function DashboardPage() {
                   <div className="truncate text-[12.5px] text-mute">{f.description}</div>
                 </div>
                 <Pill tone={STATUS_TONE[f.status]}>{STATUS_LABEL[f.status]}</Pill>
-              </div>
+              </Link>
             ))
           )}
         </section>
@@ -594,12 +600,12 @@ export default function DashboardPage() {
               <h3 className="text-sm font-semibold">Interventions à venir</h3>
               <div className="mt-0.5 text-xs text-mute">{upcoming.length} à venir</div>
             </div>
-            <HeaderLink>Voir</HeaderLink>
+            <HeaderLink href="/interventions">Voir</HeaderLink>
           </div>
           {upcoming.map((i) => {
             const d = new Date(i.scheduledFor);
             return (
-              <div key={i.id} className="flex items-center gap-3 border-t border-line px-5 py-3">
+              <Link key={i.id} href={`/machines/${i.machineId}` as Route} className="flex items-center gap-3 border-t border-line px-5 py-3 hover:bg-surface-soft">
                 <div className="min-w-[38px] text-center">
                   <div className="text-[10px] font-semibold uppercase text-mute">
                     {d.toLocaleString('fr-FR', { month: 'short' })}
@@ -614,7 +620,7 @@ export default function DashboardPage() {
                   <div className="text-[12.5px] text-mute">{i.duration} h planifiées</div>
                 </div>
                 <Pill tone={STATUS_TONE[i.status]}>{STATUS_LABEL[i.status]}</Pill>
-              </div>
+              </Link>
             );
           })}
         </section>

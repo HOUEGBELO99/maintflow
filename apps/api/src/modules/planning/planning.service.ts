@@ -95,6 +95,13 @@ export class PlanningService {
     return this.prisma.planRule.update({ where: { id }, data });
   }
 
+  /** Delete a preventive rule (its reminders cascade; generated interventions keep, unlinked). */
+  async deleteRule(siteId: string, id: string): Promise<{ id: string; deleted: boolean }> {
+    await this.findRule(siteId, id);
+    await this.prisma.planRule.delete({ where: { id } });
+    return { id, deleted: true };
+  }
+
   /**
    * "Planifier maintenant": create the due work order, log a sent reminder, and
    * advance the rule's next due date by its recurrence.

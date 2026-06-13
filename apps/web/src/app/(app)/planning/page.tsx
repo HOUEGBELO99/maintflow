@@ -1,10 +1,11 @@
 'use client';
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useRouter } from 'next/navigation';
 import { useEffect, useMemo, useState } from 'react';
 
 import { Icon } from '@/components/icon';
-import { Field, inputClass, Modal } from '@/components/ui/modal';
+import { ConfirmDialog, Field, inputClass, Modal } from '@/components/ui/modal';
 import { api, type PlanRuleInput } from '@/lib/api-client';
 import type { Intervention, Machine, PlanRule, Technician } from '@maintflow/shared';
 
@@ -20,6 +21,7 @@ const daysUntil = (iso: string) =>
 
 export default function PlanningPage() {
   const qc = useQueryClient();
+  const router = useRouter();
   const { data: rules } = useQuery({ queryKey: ['planning', 'rules'], queryFn: () => api.planning.rules() });
   const { data: upcoming } = useQuery({ queryKey: ['planning', 'upcoming'], queryFn: () => api.planning.upcoming() });
   const { data: reminders } = useQuery({ queryKey: ['planning', 'reminders'], queryFn: () => api.planning.reminders() });
@@ -29,6 +31,7 @@ export default function PlanningPage() {
   const { data: faults } = useQuery({ queryKey: ['faults'], queryFn: () => api.faults.list() });
 
   const [adding, setAdding] = useState(false);
+  const [confirmDel, setConfirmDel] = useState<PlanRule | null>(null);
 
   const invalidate = () => {
     void qc.invalidateQueries({ queryKey: ['planning'] });
@@ -41,6 +44,7 @@ export default function PlanningPage() {
     mutationFn: (r: PlanRule) => api.planning.updateRule(r.id, { active: !r.active }),
     onSuccess: invalidate,
   });
+  const deleteRule = useMutation({ mutationFn: (id: string) => api.planning.deleteRule(id), onSuccess: invalidate });
 
   const machineById = (id: string): Machine | undefined => machines?.find((m) => m.id === id);
   const techName = (id: string | null) =>
@@ -151,12 +155,21 @@ export default function PlanningPage() {
                   >
                     <Icon name="calendar" size={12} /> Planifier
                   </button>
-                  <button
-                    onClick={() => toggle.mutate(r)}
-                    className="rounded-md px-2.5 py-[5px] text-xs font-semibold text-mute transition hover:bg-surface-muted"
-                  >
-                    {r.active ? 'Suspendre' : 'Activer'}
-                  </button>
+                  <div className="flex items-center gap-1">
+                    <button
+                      onClick={() => toggle.mutate(r)}
+                      className="rounded-md px-2.5 py-[5px] text-xs font-semibold text-mute transition hover:bg-surface-muted"
+                    >
+                      {r.active ? 'Suspendre' : 'Activer'}
+                    </button>
+                    <button
+                      onClick={() => setConfirmDel(r)}
+                      title="Supprimer la planification"
+                      className="inline-flex h-7 w-7 items-center justify-center rounded-md text-mute transition hover:bg-critBg hover:text-critFg"
+                    >
+                      <Icon name="trash" size={13} />
+                    </button>
+                  </div>
                 </div>
               </div>
             );
@@ -220,6 +233,7 @@ export default function PlanningPage() {
         criticalFaultIds={
           new Set((faults ?? []).filter((f) => f.severity === 'critical').map((f) => f.id))
         }
+        onPick={(machineId) => router.push(`/machines/${machineId}`)}
       />
 
       <PlanRuleForm
@@ -228,6 +242,13 @@ export default function PlanningPage() {
         technicians={technicians ?? []}
         onClose={() => setAdding(false)}
         onSave={(body) => createRule.mutate(body)}
+      />
+      <ConfirmDialog
+        open={!!confirmDel}
+        onClose={() => setConfirmDel(null)}
+        onConfirm={() => confirmDel && deleteRule.mutate(confirmDel.id)}
+        title={`Supprimer la planification ${confirmDel?.code} ?`}
+        body="La règle de maintenance préventive et ses rappels programmés seront supprimés. Les interventions déjà générées sont conservées."
       />
     </div>
   );
@@ -247,11 +268,13 @@ function PlanningCalendar({
   machineById,
   techName,
   criticalFaultIds,
+  onPick,
 }: {
   interventions: Intervention[];
   machineById: (id: string) => Machine | undefined;
   techName: (id: string | null) => string;
   criticalFaultIds: Set<string>;
+  onPick: (machineId: string) => void;
 }) {
   const today = new Date(`${SCENARIO_TODAY}T00:00:00Z`);
   const monOffset = (today.getUTCDay() + 6) % 7;
@@ -298,13 +321,14 @@ function PlanningCalendar({
                 const tech = techName(e.technicianId).split(' ')[0];
                 const num = machineById(e.machineId)?.code.replace('MCH-', '') ?? '';
                 return (
-                  <div
+                  <button
                     key={e.id}
-                    title={e.description}
-                    className={`truncate rounded-[4px] border-l-2 px-1.5 py-0.5 text-[10.5px] font-semibold ${tone}`}
+                    onClick={() => onPick(e.machineId)}
+                    title={`${machineById(e.machineId)?.name ?? ''} — ${e.description}`}
+                    className={`truncate rounded-[4px] border-l-2 px-1.5 py-0.5 text-left text-[10.5px] font-semibold hover:brightness-95 ${tone}`}
                   >
                     {tech} · {num}
-                  </div>
+                  </button>
                 );
               })}
             </div>

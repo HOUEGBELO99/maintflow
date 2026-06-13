@@ -1,6 +1,7 @@
 'use client';
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 
 import { Icon } from '@/components/icon';
@@ -53,6 +54,7 @@ const EMPTY: FormState = {
 
 export default function MachinesPage() {
   const qc = useQueryClient();
+  const router = useRouter();
   const { data: machines } = useQuery({ queryKey: ['machines'], queryFn: () => api.machines.list() });
 
   const [filter, setFilter] = useState('all');
@@ -164,7 +166,11 @@ export default function MachinesPage() {
           </thead>
           <tbody>
             {filtered.map((m) => (
-              <tr key={m.id} className="border-b border-line transition-colors last:border-0 hover:bg-surface-soft">
+              <tr
+                key={m.id}
+                onClick={() => router.push(`/machines/${m.id}`)}
+                className="cursor-pointer border-b border-line transition-colors last:border-0 hover:bg-surface-soft"
+              >
                 <td className="px-4 py-3 font-mono text-mute">{m.code}</td>
                 <td className="px-4 py-3">
                   <div className="font-semibold">{m.name}</div>
@@ -182,14 +188,14 @@ export default function MachinesPage() {
                 <td className="px-4 py-3 text-right">
                   <div className="inline-flex gap-1">
                     <button
-                      onClick={() => setEditing(m)}
+                      onClick={(e) => { e.stopPropagation(); setEditing(m); }}
                       title="Modifier"
                       className="inline-flex h-8 w-8 items-center justify-center rounded-md text-mute hover:bg-surface-muted hover:text-ink"
                     >
                       <Icon name="edit" size={14} />
                     </button>
                     <button
-                      onClick={() => setConfirmDel(m)}
+                      onClick={(e) => { e.stopPropagation(); setConfirmDel(m); }}
                       title="Supprimer"
                       className="inline-flex h-8 w-8 items-center justify-center rounded-md text-mute hover:bg-critBg hover:text-critFg"
                     >
