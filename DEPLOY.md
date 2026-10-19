@@ -21,7 +21,10 @@ this deployment.
    key**, and **JWT secret** (Settings → API).
 2. Storage → create the bucket **`maintflow-files`** (private).
 3. Connection strings (Settings → Database):
-   - `DATABASE_URL` = the **pooled** URL (port `6543`) — used at runtime.
+   - `DATABASE_URL` = the **session-mode pooler** URL (port `5432`) + `?connection_limit=5`
+     — used at runtime. Do **not** use the transaction pooler (6543 +
+     `pgbouncer=true`) for this always-on API: Prisma then spends ~5 round-trips
+     per query (measured ~5× slower). It is meant for serverless functions.
    - `DIRECT_URL` = the **direct** URL (port `5432`) — used for migrations.
 4. Apply migrations + seed (from a machine with the prod URLs in env):
    ```bash
@@ -49,7 +52,7 @@ see `apps/api/src/config/configuration.ts`):
 | var | value |
 |---|---|
 | `NODE_ENV` | `production` |
-| `DATABASE_URL` | Supabase pooled (6543) |
+| `DATABASE_URL` | Supabase session pooler (5432) + `?connection_limit=5` |
 | `DIRECT_URL` | Supabase direct (5432) |
 | `SUPABASE_URL` | project URL |
 | `SUPABASE_SERVICE_ROLE_KEY` | service-role key (server only) |

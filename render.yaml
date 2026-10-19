@@ -27,7 +27,7 @@ services:
       - key: SUPABASE_STORAGE_BUCKET
         value: maintflow-files
       # Secrets / per-environment — set these in the Render dashboard:
-      - key: DATABASE_URL # Supabase pooled (6543)
+      - key: DATABASE_URL # Supabase session pooler (5432) + ?connection_limit=5 — not 6543/pgbouncer (≈5× slower)
         sync: false
       - key: DIRECT_URL # Supabase direct (5432), for migrations
         sync: false
