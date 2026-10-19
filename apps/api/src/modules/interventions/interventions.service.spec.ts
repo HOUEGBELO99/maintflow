@@ -1,7 +1,7 @@
-import { BadRequestException, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ForbiddenException, NotFoundException } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 
-import { FaultStatus, InterventionKind, InterventionStatus } from '@maintflow/shared';
+import { FaultStatus, InterventionKind, InterventionStatus, UserRole } from '@maintflow/shared';
 import { PrismaService } from '../prisma/prisma.service';
 import { InterventionsService } from './interventions.service';
 
@@ -188,5 +188,39 @@ describe('InterventionsService', () => {
     await service.update('site-1', 'i-1', { description: 'note' });
     expect(prisma.fault.update).not.toHaveBeenCalled();
     expect(prisma.machine.updateMany).not.toHaveBeenCalled();
+  });
+
+  it('a technician cannot reschedule or reassign work', async () => {
+    await expect(
+      service.update('site-1', 'i-1', { scheduledFor: '2026-12-01' }, UserRole.TECHNICIEN),
+    ).rejects.toBeInstanceOf(ForbiddenException);
+    await expect(
+      service.update('site-1', 'i-1', { technicianId: 'u-2' }, UserRole.TECHNICIEN),
+    ).rejects.toBeInstanceOf(ForbiddenException);
+    expect(prisma.intervention.update).not.toHaveBeenCalled();
+  });
+
+  it('a technician can still do field work (status, closure)', async () => {
+    prisma.intervention.findFirst.mockResolvedValue({
+      id: 'i-1', siteId: 'site-1', machineId: 'm-1', linkedFaultId: null,
+      status: InterventionStatus.IN_PROGRESS, startedAt: new Date(),
+    });
+    prisma.intervention.update.mockResolvedValue({});
+    await service.update(
+      'site-1', 'i-1',
+      { status: InterventionStatus.COMPLETED, actualDuration: 2, signedBy: 'S. Diallo' },
+      UserRole.TECHNICIEN,
+    );
+    expect(prisma.intervention.update).toHaveBeenCalled();
+  });
+
+  it('a chef de maintenance can reschedule', async () => {
+    prisma.intervention.findFirst.mockResolvedValue({
+      id: 'i-1', siteId: 'site-1', machineId: 'm-1', linkedFaultId: null,
+      status: InterventionStatus.PLANNED, startedAt: null,
+    });
+    prisma.intervention.update.mockResolvedValue({});
+    await service.update('site-1', 'i-1', { scheduledFor: '2026-12-01' }, UserRole.CHEF_MAINTENANCE);
+    expect(prisma.intervention.update).toHaveBeenCalled();
   });
 });

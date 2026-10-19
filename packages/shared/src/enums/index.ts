@@ -91,12 +91,21 @@ export type ReminderStatus = (typeof ReminderStatus)[keyof typeof ReminderStatus
 export const Permission = {
   WEB: 'web',
   MOBILE: 'mobile',
+  /** Read machines, faults, interventions and the team. */
   VIEW_MACHINES: 'view_machines',
   EDIT_MACHINES: 'edit_machines',
   REPORT_FAULTS: 'report_faults',
+  /** Work on interventions/faults: start, checklist, close (field work). */
   MANAGE_INTERVENTIONS: 'manage_interventions',
+  /** Create, reschedule, reassign or delete work; preventive planning rules. */
+  PLAN_INTERVENTIONS: 'plan_interventions',
+  /** Technician availability and specialties. */
+  MANAGE_TECHNICIANS: 'manage_technicians',
   MANAGE_PARTS: 'manage_parts',
-  MANAGE_USERS: 'manage_users',
+  /** Dashboards, KPIs, planning overview, team performance. */
   VIEW_REPORTS: 'view_reports',
+  EXPORT_DATA: 'export_data',
+  MANAGE_USERS: 'manage_users',
+  MANAGE_SETTINGS: 'manage_settings',
 } as const;
 export type Permission = (typeof Permission)[keyof typeof Permission];

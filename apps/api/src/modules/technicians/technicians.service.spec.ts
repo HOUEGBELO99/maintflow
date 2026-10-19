@@ -8,7 +8,7 @@ import { TechniciansService } from './technicians.service';
 describe('TechniciansService', () => {
   let service: TechniciansService;
   const prisma = {
-    technician: { findMany: jest.fn(), findFirst: jest.fn() },
+    technician: { findMany: jest.fn(), findFirst: jest.fn(), update: jest.fn() },
     intervention: { groupBy: jest.fn(), aggregate: jest.fn() },
   };
 
@@ -64,5 +64,37 @@ describe('TechniciansService', () => {
     prisma.technician.findFirst.mockResolvedValue(null);
     await expect(service.findOne('site-1', 'missing')).rejects.toBeInstanceOf(NotFoundException);
     expect(prisma.intervention.aggregate).not.toHaveBeenCalled();
+  });
+
+  it('updates availability and normalises specialties, scoped to the site', async () => {
+    prisma.technician.findFirst
+      .mockResolvedValueOnce({ id: 't-1' })
+      .mockResolvedValueOnce({
+        id: 't-1', userId: 'u-1', title: 'Technicien', specialties: ['mécanique'], available: false,
+        onTime: 90, rating: 4.5, doneThisMonth: 3, user: { name: 'Julien Petit', color: null },
+      });
+    prisma.technician.update.mockResolvedValue({});
+    prisma.intervention.aggregate.mockResolvedValue({ _count: { _all: 0 }, _sum: { duration: null } });
+
+    const res = await service.update('site-1', 't-1', {
+      available: false,
+      specialties: [' Mécanique ', 'mécanique'],
+    });
+
+    expect(prisma.technician.findFirst).toHaveBeenNthCalledWith(
+      1,
+      expect.objectContaining({ where: { id: 't-1', user: { siteId: 'site-1' } } }),
+    );
+    expect(prisma.technician.update).toHaveBeenCalledWith({
+      where: { id: 't-1' },
+      data: { available: false, specialties: ['mécanique'] },
+    });
+    expect(res.available).toBe(false);
+  });
+
+  it('refuses to update a technician from another site', async () => {
+    prisma.technician.findFirst.mockResolvedValue(null);
+    await expect(service.update('site-1', 'foreign', { available: true })).rejects.toThrow('not found');
+    expect(prisma.technician.update).not.toHaveBeenCalled();
   });
 });

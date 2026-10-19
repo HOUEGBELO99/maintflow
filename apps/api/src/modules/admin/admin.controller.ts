@@ -20,7 +20,7 @@ export class AdminController {
    * in production (real tenants must never be reset from the UI).
    */
   @Post('reset-demo')
-  @RequirePermission(Permission.MANAGE_USERS)
+  @RequirePermission(Permission.MANAGE_SETTINGS)
   @ApiOperation({ summary: 'Dev-only: reset the demo tenant to the example dataset (non-prod)' })
   resetDemo() {
     if (this.config.get<string>('NODE_ENV') === 'production') {

@@ -15,31 +15,31 @@ export class PlanningController {
   constructor(private readonly planning: PlanningService) {}
 
   @Get('rules')
-  @RequirePermission(Permission.MANAGE_INTERVENTIONS)
+  @RequirePermission(Permission.VIEW_REPORTS)
   listRules(@CurrentUser() user: AuthUser) {
     return this.planning.listRules(user.siteId);
   }
 
   @Get('reminders')
-  @RequirePermission(Permission.MANAGE_INTERVENTIONS)
+  @RequirePermission(Permission.VIEW_REPORTS)
   listReminders(@CurrentUser() user: AuthUser) {
     return this.planning.listReminders(user.siteId);
   }
 
   @Get('upcoming')
-  @RequirePermission(Permission.MANAGE_INTERVENTIONS)
+  @RequirePermission(Permission.VIEW_REPORTS)
   upcoming(@CurrentUser() user: AuthUser) {
     return this.planning.upcoming(user.siteId);
   }
 
   @Post('rules')
-  @RequirePermission(Permission.MANAGE_INTERVENTIONS)
+  @RequirePermission(Permission.PLAN_INTERVENTIONS)
   createRule(@CurrentUser() user: AuthUser, @Body() dto: CreatePlanRuleDto) {
     return this.planning.createRule(user.siteId, dto);
   }
 
   @Patch('rules/:id')
-  @RequirePermission(Permission.MANAGE_INTERVENTIONS)
+  @RequirePermission(Permission.PLAN_INTERVENTIONS)
   updateRule(
     @CurrentUser() user: AuthUser,
     @Param('id', ParseUUIDPipe) id: string,
@@ -49,13 +49,13 @@ export class PlanningController {
   }
 
   @Post('rules/:id/schedule')
-  @RequirePermission(Permission.MANAGE_INTERVENTIONS)
+  @RequirePermission(Permission.PLAN_INTERVENTIONS)
   scheduleNow(@CurrentUser() user: AuthUser, @Param('id', ParseUUIDPipe) id: string) {
     return this.planning.scheduleNow(user.siteId, id);
   }
 
   @Delete('rules/:id')
-  @RequirePermission(Permission.MANAGE_INTERVENTIONS)
+  @RequirePermission(Permission.PLAN_INTERVENTIONS)
   deleteRule(@CurrentUser() user: AuthUser, @Param('id', ParseUUIDPipe) id: string) {
     return this.planning.deleteRule(user.siteId, id);
   }
