@@ -5,6 +5,7 @@ import 'package:maintflow_mobile/core/config/env.dart';
 import 'package:maintflow_mobile/core/network/auth_interceptor.dart';
 import 'package:maintflow_mobile/data/auth/session_store.dart';
 import 'package:maintflow_mobile/data/auth/token_refresher.dart';
+import 'package:maintflow_mobile/features/auth/auth_controller.dart';
 
 /// Dio configured against the NestJS API. [AuthInterceptor] attaches the current
 /// access token (held in [SessionStore]) to every request and, on a 401,
@@ -24,7 +25,14 @@ final apiClientProvider = Provider<Dio>((ref) {
   );
 
   dio.interceptors.add(
-    AuthInterceptor(dio: dio, tokens: session, refresher: refresher),
+    AuthInterceptor(
+      dio: dio,
+      tokens: session,
+      refresher: refresher,
+      // Read lazily (at call time) to avoid a provider cycle.
+      onSessionExpired: () =>
+          ref.read(authControllerProvider.notifier).expireSession(),
+    ),
   );
 
   return dio;

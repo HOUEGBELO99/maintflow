@@ -160,6 +160,19 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                             ),
                             const SizedBox(height: 12),
                             const Spacer(),
+                            if (ref.watch(sessionExpiredProvider) && !loading)
+                              const Padding(
+                                padding: EdgeInsets.only(bottom: 10),
+                                child: Text(
+                                  'Votre session a expiré — reconnectez-vous.',
+                                  textAlign: TextAlign.center,
+                                  style: TextStyle(
+                                    fontSize: 12.5,
+                                    fontWeight: FontWeight.w600,
+                                    color: AppColors.crit,
+                                  ),
+                                ),
+                              ),
                             if (loading && _slow)
                               const Padding(
                                 padding: EdgeInsets.only(bottom: 10),
