@@ -19,7 +19,10 @@ this deployment.
 
 1. Create the project; note the **Project URL**, **anon key**, **service-role
    key**, and **JWT secret** (Settings → API).
-2. Storage → create the bucket **`maintflow-files`** (private).
+2. Storage → create the bucket **`maintflow-files`**: **private** (photos are
+   served through short-lived signed URLs), file size limit **10 MB**, allowed
+   MIME types **`image/*`** — the same limits the API enforces. Without this
+   bucket, fault photos fail (API answers 503 "File storage unavailable").
 3. Connection strings (Settings → Database):
    - `DATABASE_URL` = the **session-mode pooler** URL (port `5432`) + `?connection_limit=5`
      — used at runtime. Do **not** use the transaction pooler (6543 +
