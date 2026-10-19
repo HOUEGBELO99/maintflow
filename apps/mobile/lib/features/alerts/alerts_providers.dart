@@ -7,6 +7,7 @@ import 'package:maintflow_mobile/data/models/attachment.dart';
 import 'package:maintflow_mobile/data/models/enums.dart';
 import 'package:maintflow_mobile/data/models/fault.dart';
 import 'package:maintflow_mobile/data/repositories/missions_repository.dart';
+import 'package:maintflow_mobile/features/auth/auth_controller.dart';
 
 /// The alert feed filters, mirroring the prototype tabs.
 enum AlertFilter { all, critical, unresolved }
@@ -15,7 +16,12 @@ enum AlertFilter { all, critical, unresolved }
 /// background refresh. Backs the alerts feed.
 final faultsProvider = StreamProvider.autoDispose<List<Fault>>((ref) {
   final repo = ref.watch(missionsRepositoryProvider);
-  unawaited(repo.refreshFaults().catchError((Object _) {}));
+  // Refresh only once signed in, and again when the session is restored:
+  // firing before the token is loaded 401s and leaves the cache empty.
+  final signedIn = ref.watch(
+    authControllerProvider.select((s) => s.valueOrNull?.id != null),
+  );
+  if (signedIn) unawaited(repo.refreshFaults().catchError((Object _) {}));
   return repo.watchFaults().map(
         (list) =>
             list.toList()..sort((a, b) => b.reportedAt.compareTo(a.reportedAt)),

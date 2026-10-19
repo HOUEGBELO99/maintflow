@@ -1,8 +1,10 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 
-import { InterventionKind, InterventionStatus } from '@maintflow/shared';
+import { FaultStatus, InterventionKind, InterventionStatus, Permission, roleHasPermission } from '@maintflow/shared';
+import type { UserRole } from '@maintflow/shared';
 import { PrismaService } from '../prisma/prisma.service';
+import { syncMachineState } from '../machines/machine-state';
 import type { CreateInterventionDto } from './dto/create-intervention.dto';
 import type { UpdateInterventionDto } from './dto/update-intervention.dto';
 
@@ -12,6 +14,17 @@ export interface InterventionFilters {
   machineId?: string;
   kind?: InterventionKind;
 }
+
+/** Fields that change the plan (vs. field work done on the intervention). */
+const PLANNING_FIELDS = [
+  'technicianId',
+  'kind',
+  'description',
+  'scheduledFor',
+  'duration',
+  'linkedFaultId',
+  'planRuleId',
+] as const satisfies readonly (keyof UpdateInterventionDto)[];
 
 /** All queries are scoped by `siteId` (multi-tenant). */
 @Injectable()
@@ -54,7 +67,17 @@ export class InterventionsService {
     });
   }
 
-  async update(siteId: string, id: string, dto: UpdateInterventionDto) {
+  /**
+   * Field work (status, checklist, closure, check-in) needs MANAGE_INTERVENTIONS
+   * (checked by the route); changing the plan itself — who, when, what —
+   * additionally needs PLAN_INTERVENTIONS, so a technician cannot reschedule
+   * or reassign work.
+   */
+  async update(siteId: string, id: string, dto: UpdateInterventionDto, actorRole?: UserRole) {
+    const planningChange = PLANNING_FIELDS.some((f) => dto[f] !== undefined);
+    if (planningChange && actorRole && !roleHasPermission(actorRole, Permission.PLAN_INTERVENTIONS)) {
+      throw new ForbiddenException('Only planners can reschedule, reassign or edit an intervention');
+    }
     const current = await this.findOne(siteId, id);
     if (dto.technicianId) await this.assertTechnician(siteId, dto.technicianId);
     if (dto.linkedFaultId) await this.assertFault(siteId, dto.linkedFaultId);
@@ -85,12 +108,53 @@ export class InterventionsService {
       }
     }
 
-    return this.prisma.intervention.update({ where: { id }, data });
+    const statusChanged = dto.status !== undefined && dto.status !== current.status;
+    const faultId = dto.linkedFaultId ?? current.linkedFaultId;
+
+    return this.prisma.$transaction(async (tx) => {
+      const updated = await tx.intervention.update({ where: { id }, data });
+      if (!statusChanged) return updated;
+
+      // The linked fault follows the work order: starting the work takes the
+      // fault in charge, completing it resolves the fault.
+      if (faultId) await this.advanceLinkedFault(tx, siteId, faultId, dto.status!);
+      await syncMachineState(tx, siteId, current.machineId);
+      return updated;
+    });
+  }
+
+  private async advanceLinkedFault(
+    tx: Prisma.TransactionClient,
+    siteId: string,
+    faultId: string,
+    status: InterventionStatus,
+  ): Promise<void> {
+    const fault = await tx.fault.findFirst({
+      where: { id: faultId, siteId },
+      select: { status: true, takenAt: true },
+    });
+    if (!fault || fault.status === FaultStatus.RESOLVED) return;
+
+    const now = new Date();
+    if (status === InterventionStatus.IN_PROGRESS && fault.status === FaultStatus.PENDING) {
+      await tx.fault.update({
+        where: { id: faultId },
+        data: { status: FaultStatus.IN_PROGRESS, takenAt: fault.takenAt ?? now },
+      });
+    } else if (status === InterventionStatus.COMPLETED) {
+      await tx.fault.update({
+        where: { id: faultId },
+        data: { status: FaultStatus.RESOLVED, resolvedAt: now, takenAt: fault.takenAt ?? now },
+      });
+    }
   }
 
   async remove(siteId: string, id: string) {
-    await this.findOne(siteId, id);
-    await this.prisma.intervention.delete({ where: { id } });
+    const intervention = await this.findOne(siteId, id);
+    await this.prisma.$transaction(async (tx) => {
+      await tx.intervention.delete({ where: { id } });
+      await syncMachineState(tx, siteId, intervention.machineId);
+    });
     return { id, deleted: true };
   }
 

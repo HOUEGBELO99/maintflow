@@ -47,9 +47,12 @@ class _RecordingApi extends ApiDataSource {
 
   Map<String, dynamic>? created;
   String? uploadedFaultId;
+  int createCalls = 0;
+  bool failUpload = false;
 
   @override
   Future<String> createFault(Map<String, dynamic> body) async {
+    createCalls++;
     created = body;
     return 'f-new';
   }
@@ -61,6 +64,16 @@ class _RecordingApi extends ApiDataSource {
     required String filename,
     required String mimeType,
   }) async {
+    if (failUpload) {
+      throw DioException(
+        requestOptions: RequestOptions(path: '/files/faults/$faultId'),
+        type: DioExceptionType.badResponse,
+        response: Response<void>(
+          requestOptions: RequestOptions(path: '/files/faults/$faultId'),
+          statusCode: 500,
+        ),
+      );
+    }
     uploadedFaultId = faultId;
   }
 }
@@ -210,5 +223,78 @@ void main() {
     expect(api.created?['machineId'], 'm1');
     expect(api.created?['description'], 'Surchauffe palier moteur');
     expect(api.uploadedFaultId, 'f-new');
+  });
+
+  testWidgets('a rejected photo keeps the fault declared — no duplicate',
+      (tester) async {
+    tester.view.physicalSize = const Size(1200, 2800);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    final api = _RecordingApi()..failUpload = true;
+    final router = GoRouter(
+      initialLocation: '/report',
+      routes: [
+        GoRoute(
+          path: '/report',
+          builder: (_, __) => const ReportScreen(machineId: 'm1'),
+        ),
+        GoRoute(
+          path: '/missions',
+          builder: (_, __) => const Scaffold(body: Text('missions')),
+        ),
+      ],
+    );
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          machinesByIdProvider.overrideWith(
+            (ref) => Stream.value({'m1': _machine}),
+          ),
+          photoPickerProvider.overrideWithValue(_FakePicker()),
+          apiDataSourceProvider.overrideWithValue(api),
+        ],
+        child: MaterialApp.router(routerConfig: router),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.enterText(find.byType(TextField), 'Fuite huile compresseur');
+    await tester.tap(find.text('Ajouter une photo'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Déclarer la panne'));
+    await tester.pumpAndSettle();
+
+    expect(api.createCalls, 1);
+    expect(
+      find.textContaining("la photo n'a pas pu être enregistrée"),
+      findsOneWidget,
+    );
+    // Left the form: nothing to resubmit, so no duplicate fault.
+    expect(find.text('missions'), findsOneWidget);
+  });
+
+  test('describeReportError explains offline vs server problems', () {
+    final offline = DioException(
+      requestOptions: RequestOptions(path: '/faults'),
+      type: DioExceptionType.connectionError,
+    );
+    expect(
+      describeReportError(offline, withPhoto: true),
+      contains('Retirez la photo'),
+    );
+    final server = DioException(
+      requestOptions: RequestOptions(path: '/faults'),
+      type: DioExceptionType.badResponse,
+      response: Response<void>(
+        requestOptions: RequestOptions(path: '/faults'),
+        statusCode: 500,
+      ),
+    );
+    expect(
+      describeReportError(server, withPhoto: true),
+      isNot(contains('connexion')),
+    );
   });
 }

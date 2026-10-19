@@ -34,7 +34,7 @@ dependencies:
   flutter_secure_storage: ^9.2.2
 
   # Field features (from the prototype technician flows)
-  mobile_scanner: ^6.0.2 # QR / barcode scan
+  mobile_scanner: ^7.1.3 # QR / barcode scan (Apple Vision on iOS, ML Kit on Android)
   image_picker: ^1.1.2 # intervention photos
   signature: ^5.5.0 # closure signature
   geolocator: ^13.0.2 # check-in geolocation
@@ -56,6 +56,8 @@ dependencies:
 
 dev_dependencies:
   flutter_test:
+    sdk: flutter
+  integration_test:
     sdk: flutter
   flutter_lints: ^5.0.0
   build_runner: ^2.4.13

@@ -9,6 +9,11 @@
     "emitDecoratorMetadata": true,
     "experimentalDecorators": true,
     "strictPropertyInitialization": false,
+    // Nest wipes dist/ on every build (deleteOutDir). An incremental
+    // .tsbuildinfo living outside dist/ (written by `tsc --noEmit`) survives
+    // the wipe, so tsc skips re-emitting "unchanged" files and the app crashes
+    // with MODULE_NOT_FOUND. Builds are fast enough without incremental.
+    "incremental": false,
     "paths": {
       "@/*": ["*"]
     }

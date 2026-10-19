@@ -107,7 +107,7 @@ src/
 - **RLS = défense en profondeur.** L'autorisation primaire est dans l'API (CASL) ; les policies Postgres (`migrations/0001_enable_rls`) sont une seconde barrière. La `service_role` (API) bypasse la RLS ; l'`anon key` y est soumise.
 - **Migrations** : nommées et committées. `migrate dev` en local, `migrate deploy` en CI/prod.
 - **Seed** (`prisma/seed.ts`) idempotent (`upsert`), porte le jeu de démo des prototypes.
-- **Supabase** : utiliser l'URL **poolée (6543)** pour `DATABASE_URL` (runtime) et l'URL **directe (5432)** pour `DIRECT_URL` (migrations).
+- **Supabase** : l'API est un serveur permanent (Render) → `DATABASE_URL` = pooler en **mode session (port 5432)** avec `?connection_limit=5`, sans `pgbouncer=true`. Le mode transaction (6543 + `pgbouncer=true`) est réservé au serverless : il coûte ~5 allers-retours par requête (≈ ×5 sur la latence, mesuré). `DIRECT_URL` (migrations) = même URL session 5432.
 
 ---
 

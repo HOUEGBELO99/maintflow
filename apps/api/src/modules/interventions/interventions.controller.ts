@@ -43,7 +43,7 @@ export class InterventionsController {
   }
 
   @Post()
-  @RequirePermission(Permission.MANAGE_INTERVENTIONS)
+  @RequirePermission(Permission.PLAN_INTERVENTIONS)
   create(@CurrentUser() user: AuthUser, @Body() dto: CreateInterventionDto) {
     return this.interventions.create(user.siteId, dto);
   }
@@ -55,11 +55,11 @@ export class InterventionsController {
     @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: UpdateInterventionDto,
   ) {
-    return this.interventions.update(user.siteId, id, dto);
+    return this.interventions.update(user.siteId, id, dto, user.role);
   }
 
   @Delete(':id')
-  @RequirePermission(Permission.MANAGE_INTERVENTIONS)
+  @RequirePermission(Permission.PLAN_INTERVENTIONS)
   remove(@CurrentUser() user: AuthUser, @Param('id', ParseUUIDPipe) id: string) {
     return this.interventions.remove(user.siteId, id);
   }

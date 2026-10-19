@@ -6,8 +6,9 @@ import { useEffect, useState } from 'react';
 
 import { Icon } from '@/components/icon';
 import { ConfirmDialog, Field, inputClass, Modal } from '@/components/ui/modal';
+import { useCan } from '@/lib/permissions';
 import { api, type MachineInput } from '@/lib/api-client';
-import type { Machine } from '@maintflow/shared';
+import { Permission, type Machine } from '@maintflow/shared';
 
 const MACHINE_TYPES = [
   'compresseur', 'convoyeur', 'machine-outil', 'presse', 'pompe', 'moteur',
@@ -53,6 +54,7 @@ const EMPTY: FormState = {
 };
 
 export default function MachinesPage() {
+  const canEdit = useCan()(Permission.EDIT_MACHINES);
   const qc = useQueryClient();
   const router = useRouter();
   const { data: machines } = useQuery({ queryKey: ['machines'], queryFn: () => api.machines.list() });
@@ -145,15 +147,27 @@ export default function MachinesPage() {
           />
         </div>
         <button
-          onClick={() => setAdding(true)}
-          className="inline-flex items-center gap-2 rounded-md border border-brand bg-brand-bright px-3.5 py-2 text-[13px] font-bold text-brand-deep transition hover:bg-brand"
+          onClick={() =>
+            window.open(`/print/labels?ids=${filtered.map((m) => m.id).join(',')}`, '_blank', 'noopener')
+          }
+          disabled={filtered.length === 0}
+          title="Imprimer les étiquettes QR des machines affichées"
+          className="inline-flex items-center gap-2 rounded-md border border-line bg-surface px-3.5 py-2 text-[13px] font-semibold text-body transition hover:bg-surface-muted disabled:opacity-50"
         >
-          <Icon name="plus" size={14} /> Ajouter une machine
+          <Icon name="download" size={14} /> Étiquettes QR
         </button>
+        {canEdit && (
+          <button
+            onClick={() => setAdding(true)}
+            className="inline-flex items-center gap-2 rounded-md border border-brand bg-brand-bright px-3.5 py-2 text-[13px] font-bold text-brand-deep transition hover:bg-brand"
+          >
+            <Icon name="plus" size={14} /> Ajouter une machine
+          </button>
+        )}
       </div>
 
       {/* Table */}
-      <div className="overflow-hidden rounded-lg border border-line bg-surface">
+      <div className="overflow-x-auto rounded-lg border border-line bg-surface">
         <table className="w-full border-collapse text-[13px]">
           <thead>
             <tr className="bg-surface-soft text-[11px] uppercase tracking-[0.06em] text-mute">
@@ -186,7 +200,7 @@ export default function MachinesPage() {
                   <StatePill state={m.state} />
                 </td>
                 <td className="px-4 py-3 text-right">
-                  <div className="inline-flex gap-1">
+                  {canEdit && <div className="inline-flex gap-1">
                     <button
                       onClick={(e) => { e.stopPropagation(); setEditing(m); }}
                       title="Modifier"
@@ -201,7 +215,7 @@ export default function MachinesPage() {
                     >
                       <Icon name="trash" size={14} />
                     </button>
-                  </div>
+                  </div>}
                 </td>
               </tr>
             ))}

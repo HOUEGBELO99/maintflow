@@ -4,6 +4,7 @@ import { JwtModule } from '@nestjs/jwt';
 import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
 import { SupabaseTokenVerifier } from '../../common/auth/supabase-token.verifier';
+import { AuthProfileCache } from '../../common/auth/auth-profile.cache';
 
 /**
  * Global so SupabaseTokenVerifier is available to JwtAuthGuard (registered as
@@ -16,7 +17,7 @@ import { SupabaseTokenVerifier } from '../../common/auth/supabase-token.verifier
 @Module({
   imports: [JwtModule.register({})],
   controllers: [AuthController],
-  providers: [AuthService, SupabaseTokenVerifier],
-  exports: [JwtModule, SupabaseTokenVerifier],
+  providers: [AuthService, SupabaseTokenVerifier, AuthProfileCache],
+  exports: [JwtModule, SupabaseTokenVerifier, AuthProfileCache],
 })
 export class AuthModule {}

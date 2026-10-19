@@ -199,6 +199,8 @@ export const api = {
   },
   technicians: {
     list: () => request<Technician[]>('/technicians'),
+    update: (id: string, body: { available?: boolean; specialties?: string[]; title?: string }) =>
+      request<Technician>(`/technicians/${id}`, { method: 'PATCH', body: JSON.stringify(body) }),
   },
   planning: {
     rules: () => request<PlanRule[]>('/planning/rules'),

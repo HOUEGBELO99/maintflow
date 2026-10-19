@@ -59,7 +59,7 @@ export class FaultsController {
   }
 
   @Delete(':id')
-  @RequirePermission(Permission.MANAGE_INTERVENTIONS)
+  @RequirePermission(Permission.PLAN_INTERVENTIONS)
   remove(@CurrentUser() user: AuthUser, @Param('id', ParseUUIDPipe) id: string) {
     return this.faults.remove(user.siteId, id);
   }

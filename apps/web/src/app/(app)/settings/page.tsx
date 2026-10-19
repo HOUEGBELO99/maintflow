@@ -6,7 +6,8 @@ import { useState } from 'react';
 import { Icon } from '@/components/icon';
 import { ConfirmDialog } from '@/components/ui/modal';
 import { api } from '@/lib/api-client';
-import type { Machine } from '@maintflow/shared';
+import { Permission, type Machine } from '@maintflow/shared';
+import { useCan } from '@/lib/permissions';
 
 const today = () => new Date().toISOString().slice(0, 10);
 
@@ -23,6 +24,9 @@ function download(filename: string, content: string, mime: string) {
 const csvCell = (v: unknown) => `"${String(v ?? '').replace(/"/g, '""')}"`;
 
 export default function SettingsPage() {
+  const can = useCan();
+  const canExport = can(Permission.EXPORT_DATA);
+  const canReset = can(Permission.MANAGE_SETTINGS) && process.env.NODE_ENV !== 'production';
   const qc = useQueryClient();
   const [confirmReset, setConfirmReset] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -88,13 +92,15 @@ export default function SettingsPage() {
           <div className="mt-0.5 text-xs text-mute">Sauvegarde et export des données de maintenance</div>
         </div>
         <div className="px-5 py-[18px]">
-          <div className="grid grid-cols-3 gap-3">
+          {canExport && <div className="grid grid-cols-3 gap-3">
             <ExportTile icon="file" title="Exporter en JSON" sub="Backup complet" onClick={exportJson} disabled={busy} />
             <ExportTile icon="file" title="Exporter en CSV" sub="Compatible Excel" onClick={exportCsv} disabled={busy} />
             <ExportTile icon="download" title="Imprimer en PDF" sub="Aperçu navigateur" onClick={() => window.print()} />
-          </div>
+          </div>}
+          {!canExport && <p className="text-[13px] text-mute">Votre rôle ne permet pas d’exporter les données.</p>}
 
-          <div className="mt-4 flex items-center justify-between gap-3 rounded-md border border-dashed border-line-strong bg-surface-soft px-3.5 py-3.5">
+          {/* Demo reset: admins only, and never offered in production (the API refuses it there). */}
+          {canReset && <div className="mt-4 flex items-center justify-between gap-3 rounded-md border border-dashed border-line-strong bg-surface-soft px-3.5 py-3.5">
             <div>
               <div className="text-[13.5px] font-semibold">Réinitialiser les données d’exemple</div>
               <div className="text-[12px] text-mute">
@@ -108,7 +114,7 @@ export default function SettingsPage() {
             >
               <Icon name="refresh" size={14} /> {reset.isPending ? 'Réinitialisation…' : 'Réinitialiser'}
             </button>
-          </div>
+          </div>}
         </div>
       </div>
 

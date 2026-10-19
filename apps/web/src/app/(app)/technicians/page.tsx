@@ -1,12 +1,13 @@
 'use client';
 
-import { useQuery } from '@tanstack/react-query';
-import { useState, type ReactNode } from 'react';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useEffect, useState, type ReactNode } from 'react';
 
 import { Icon } from '@/components/icon';
 import { Modal } from '@/components/ui/modal';
 import { api } from '@/lib/api-client';
-import type { Intervention, Machine, Technician } from '@maintflow/shared';
+import { Permission, type Intervention, type Machine, type Technician } from '@maintflow/shared';
+import { useCan } from '@/lib/permissions';
 
 /** Specialty → pill tone (mirrors the prototype SPEC_COLOR map). */
 const SPEC_PILL: Record<string, string> = {
@@ -68,7 +69,7 @@ function StatusPill({ available }: { available: boolean }) {
     </span>
   ) : (
     <span className="inline-flex items-center gap-1.5 whitespace-nowrap rounded-pill border border-[#FDE68A] bg-warnBg px-[9px] py-[3px] text-[11.5px] font-semibold leading-[1.4] text-warnFg">
-      <span className="h-1.5 w-1.5 rounded-full bg-current" /> En intervention
+      <span className="h-1.5 w-1.5 rounded-full bg-current" /> Indisponible
     </span>
   );
 }
@@ -85,9 +86,11 @@ function SpecPill({ spec }: { spec: string }) {
 
 export default function TechniciansPage() {
   const { data: technicians } = useQuery({ queryKey: ['technicians'], queryFn: () => api.technicians.list() });
-  const [open, setOpen] = useState<Technician | null>(null);
+  const [openId, setOpenId] = useState<string | null>(null);
 
   const list = technicians ?? [];
+  // Derived from the list so the sheet reflects an edit immediately.
+  const open = list.find((t) => t.id === openId) ?? null;
   const available = list.filter((t) => t.available).length;
 
   return (
@@ -121,7 +124,7 @@ export default function TechniciansPage() {
           return (
             <button
               key={t.id}
-              onClick={() => setOpen(t)}
+              onClick={() => setOpenId(t.id)}
               className="rounded-lg border border-line bg-surface p-5 text-left transition hover:shadow-[var(--shadow-md)]"
             >
               <div className="mb-3.5 flex items-center gap-3">
@@ -186,7 +189,7 @@ export default function TechniciansPage() {
         })}
       </div>
 
-      <TechnicianDetail tech={open} onClose={() => setOpen(null)} />
+      <TechnicianDetail tech={open} onClose={() => setOpenId(null)} />
     </div>
   );
 }
@@ -252,6 +255,8 @@ function TechnicianDetail({ tech, onClose }: { tech: Technician | null; onClose:
             <StatusPill available={tech.available} />
           </div>
         </div>
+
+        <TechnicianSettings tech={tech} />
 
         <div className="grid grid-cols-4 gap-3">
           {stat(`${tech.onTime}%`, 'Résolu dans les délais')}
@@ -338,6 +343,103 @@ function InterventionRow({ it, machine }: { it: Intervention; machine?: Machine 
       <div className="flex-shrink-0 text-right text-[12px]">
         <div className="font-semibold">{fmtDate(it.scheduledFor)}</div>
         <div className="text-[11px] text-mute">{it.duration} h</div>
+      </div>
+    </div>
+  );
+}
+
+const KNOWN_SPECIALTIES = ['mécanique', 'électrique', 'hydraulique', 'logiciel'];
+
+/** Availability, specialties and title — admin and chef de maintenance only. */
+function TechnicianSettings({ tech }: { tech: Technician }) {
+  const can = useCan();
+  const qc = useQueryClient();
+  const [title, setTitle] = useState(tech.title);
+  useEffect(() => setTitle(tech.title), [tech.title]);
+
+  const update = useMutation({
+    mutationFn: (body: { available?: boolean; specialties?: string[]; title?: string }) =>
+      api.technicians.update(tech.id, body),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['technicians'] }),
+  });
+
+  if (!can(Permission.MANAGE_TECHNICIANS)) return null;
+
+  const options = [...new Set([...KNOWN_SPECIALTIES, ...tech.specialties])];
+  const toggleSpec = (sp: string) =>
+    update.mutate({
+      specialties: tech.specialties.includes(sp)
+        ? tech.specialties.filter((x) => x !== sp)
+        : [...tech.specialties, sp],
+    });
+
+  return (
+    <div className="rounded-lg border border-line bg-surface-soft p-4">
+      <div className="mb-3 text-[12px] font-bold uppercase tracking-[0.05em] text-mute">Gérer le technicien</div>
+      <div className="flex flex-col gap-3.5">
+        <label className="flex cursor-pointer items-center justify-between gap-3">
+          <span>
+            <span className="block text-[13.5px] font-semibold">Disponible pour de nouvelles interventions</span>
+            <span className="block text-[12px] text-mute">Indisponible : congés, formation, arrêt…</span>
+          </span>
+          <input
+            type="checkbox"
+            role="switch"
+            checked={tech.available}
+            disabled={update.isPending}
+            onChange={(e) => update.mutate({ available: e.target.checked })}
+            className="h-5 w-9 cursor-pointer accent-[#00C24A]"
+          />
+        </label>
+
+        <div>
+          <div className="mb-1.5 text-[13px] font-semibold">Spécialités</div>
+          <div className="flex flex-wrap gap-1.5">
+            {options.map((sp) => {
+              const on = tech.specialties.includes(sp);
+              return (
+                <button
+                  key={sp}
+                  type="button"
+                  aria-pressed={on}
+                  disabled={update.isPending || (on && tech.specialties.length === 1)}
+                  onClick={() => toggleSpec(sp)}
+                  className={`rounded-pill border px-2.5 py-1 text-[12px] font-semibold capitalize transition disabled:opacity-60 ${
+                    on ? 'border-brand bg-brand-50 text-brand-deep' : 'border-line bg-surface text-mute hover:text-ink'
+                  }`}
+                >
+                  {on ? '✓ ' : '+ '}
+                  {sp}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        <form
+          className="flex items-end gap-2"
+          onSubmit={(e) => {
+            e.preventDefault();
+            if (title.trim().length >= 2 && title.trim() !== tech.title) update.mutate({ title: title.trim() });
+          }}
+        >
+          <label className="flex-1">
+            <span className="mb-1 block text-[13px] font-semibold">Intitulé du poste</span>
+            <input
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              maxLength={60}
+              className="w-full rounded-md border border-line bg-surface px-3 py-2 text-[13px] outline-none focus:border-line-strong"
+            />
+          </label>
+          <button
+            type="submit"
+            disabled={update.isPending || title.trim().length < 2 || title.trim() === tech.title}
+            className="rounded-md border border-brand bg-brand-bright px-3.5 py-2 text-[13px] font-bold text-brand-deep transition hover:bg-brand disabled:opacity-50"
+          >
+            Enregistrer
+          </button>
+        </form>
       </div>
     </div>
   );

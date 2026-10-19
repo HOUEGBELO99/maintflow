@@ -38,7 +38,12 @@ class AuthRepository {
     final token = await remote.signInWithPassword(email, password);
     // Make the token available to the interceptor before hydrating the profile.
     await _session.updateAccessToken(token);
-    final res = await _dio.get<Map<String, dynamic>>('/auth/me');
+    // The API sleeps on free hosting and needs up to ~1 min to wake up: give
+    // the first call after sign-in room instead of failing a valid login.
+    final res = await _dio.get<Map<String, dynamic>>(
+      '/auth/me',
+      options: Options(receiveTimeout: const Duration(seconds: 90)),
+    );
     final user = SessionUser.fromJson(res.data!);
     await _session.save(token, user, refreshToken: remote.refreshToken);
     return user;

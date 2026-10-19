@@ -2,6 +2,7 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 
 import type { Technician } from '@maintflow/shared';
 import { PrismaService } from '../prisma/prisma.service';
+import type { UpdateTechnicianDto } from './dto/update-technician.dto';
 
 /** Interventions in these states still count toward a technician's live workload. */
 const ACTIVE_STATUSES = ['planned', 'in_progress'] as const;
@@ -16,7 +17,7 @@ function shortName(full: string): string {
 }
 
 /**
- * Read-only technician directory with performance + live workload, scoped by
+ * Technician directory with performance + live workload, scoped by
  * `siteId` (multi-tenant). The siteId always comes from the authenticated user.
  * Interventions reference the technician's User id (`technicianId`).
  */
@@ -56,6 +57,27 @@ export class TechniciansService {
       _sum: { duration: true },
     });
     return this.toDto(tech, { _count: { _all: w._count._all }, _sum: { duration: w._sum.duration } });
+  }
+
+  /** Availability, specialties and title — tenant-scoped. */
+  async update(siteId: string, id: string, dto: UpdateTechnicianDto): Promise<Technician> {
+    const tech = await this.prisma.technician.findFirst({
+      where: { id, user: { siteId } },
+      select: { id: true },
+    });
+    if (!tech) throw new NotFoundException(`Technician ${id} not found`);
+
+    await this.prisma.technician.update({
+      where: { id },
+      data: {
+        ...(dto.available !== undefined ? { available: dto.available } : {}),
+        ...(dto.title !== undefined ? { title: dto.title.trim() } : {}),
+        ...(dto.specialties !== undefined
+          ? { specialties: [...new Set(dto.specialties.map((x) => x.trim().toLowerCase()))] }
+          : {}),
+      },
+    });
+    return this.findOne(siteId, id);
   }
 
   private toDto(

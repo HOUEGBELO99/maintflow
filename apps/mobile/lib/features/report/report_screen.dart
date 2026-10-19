@@ -1,3 +1,4 @@
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -62,6 +63,37 @@ const _severityOptions = <(FaultSeverity severity, String label)>[
 /// offline-first via [SyncService] (queued, replayed on reconnect). With a photo
 /// it goes online — create the fault, then upload to `POST /files/faults/:id`
 /// (the upload needs the server id) — and surfaces an error if offline.
+/// Why declaring a fault failed, in the technician's terms. Only a fault
+/// with a photo needs the network (without one it is queued offline).
+String describeReportError(Object error, {required bool withPhoto}) {
+  if (error is DioException) {
+    switch (error.type) {
+      case DioExceptionType.connectionError:
+      case DioExceptionType.connectionTimeout:
+      case DioExceptionType.receiveTimeout:
+      case DioExceptionType.sendTimeout:
+        return withPhoto
+            ? 'Pas de connexion : une panne avec photo doit être envoyée en '
+                'ligne. Retirez la photo pour l’enregistrer hors-ligne.'
+            : 'Pas de connexion au serveur — réessayez.';
+      case DioExceptionType.badResponse:
+        final status = error.response?.statusCode ?? 0;
+        if (status == 403) {
+          return 'Votre rôle ne permet pas de déclarer une panne.';
+        }
+        if (status >= 500) {
+          return 'Le serveur n’a pas pu enregistrer la panne — réessayez.';
+        }
+        return 'Déclaration refusée (erreur $status).';
+      case DioExceptionType.badCertificate:
+      case DioExceptionType.cancel:
+      case DioExceptionType.unknown:
+        break;
+    }
+  }
+  return 'Envoi impossible — réessayez.';
+}
+
 class ReportScreen extends ConsumerStatefulWidget {
   const ReportScreen({required this.machineId, super.key});
 
@@ -107,6 +139,7 @@ class _ReportScreenState extends ConsumerState<ReportScreen> {
       description: _description.text,
     );
     final photo = _photo;
+    var photoFailed = false;
     try {
       if (photo == null) {
         // No photo: offline-first via the sync queue.
@@ -115,26 +148,38 @@ class _ReportScreenState extends ConsumerState<ReportScreen> {
         // With a photo we need the server id, so create online then upload.
         final api = ref.read(apiDataSourceProvider);
         final faultId = await api.createFault(body);
-        await api.uploadFaultPhoto(
-          faultId,
-          bytes: photo.bytes,
-          filename: photo.filename,
-          mimeType: photo.mimeType,
-        );
+        // The fault is recorded from here on: a failed upload must not make
+        // the technician resubmit (that duplicated the fault on every retry).
+        try {
+          await api.uploadFaultPhoto(
+            faultId,
+            bytes: photo.bytes,
+            filename: photo.filename,
+            mimeType: photo.mimeType,
+          );
+        } on Object {
+          photoFailed = true;
+        }
       }
-    } catch (_) {
+    } on Object catch (e) {
       if (!mounted) return;
       setState(() => _submitting = false);
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Envoi impossible — la photo nécessite une connexion.'),
+        SnackBar(
+          content: Text(describeReportError(e, withPhoto: photo != null)),
         ),
       );
       return;
     }
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Panne déclarée')),
+      SnackBar(
+        content: Text(
+          photoFailed
+              ? "Panne déclarée — la photo n'a pas pu être enregistrée."
+              : 'Panne déclarée',
+        ),
+      ),
     );
     context.go('/missions');
   }

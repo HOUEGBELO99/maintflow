@@ -6,7 +6,8 @@ import { useEffect, useState, type ReactNode } from 'react';
 import { Icon } from '@/components/icon';
 import { ConfirmDialog, Field, inputClass, Modal } from '@/components/ui/modal';
 import { api, type InvitationInput, type SiteUser } from '@/lib/api-client';
-import type { UserRole } from '@maintflow/shared';
+import { PERMISSION_MATRIX, Permission, roleHasPermission, type UserRole } from '@maintflow/shared';
+import { useCan } from '@/lib/permissions';
 
 const ROLES: UserRole[] = ['admin', 'chef_maintenance', 'chef_atelier', 'technicien', 'operateur'];
 const ROLE_LABEL: Record<string, string> = {
@@ -19,21 +20,8 @@ const ROLE_LABEL: Record<string, string> = {
 const WEB_ROLES = ['admin', 'chef_maintenance', 'chef_atelier'];
 const WORKSHOPS = ['Tous', 'Atelier A', 'Atelier B', 'Atelier C', 'Atelier D', 'Utilités', 'Direction'];
 
-/** Static documentation of the role model (mirrors the prototype's matrix). */
-const PERMISSIONS: { label: string; roles: Record<string, number> }[] = [
-  { label: 'Tableau de bord web (desktop)', roles: { admin: 1, chef_maintenance: 1, chef_atelier: 1, technicien: 0, operateur: 0 } },
-  { label: 'Application mobile terrain', roles: { admin: 1, chef_maintenance: 0, chef_atelier: 0, technicien: 1, operateur: 1 } },
-  { label: 'Consulter les machines', roles: { admin: 1, chef_maintenance: 1, chef_atelier: 1, technicien: 1, operateur: 1 } },
-  { label: 'Ajouter / modifier des machines', roles: { admin: 1, chef_maintenance: 1, chef_atelier: 0, technicien: 0, operateur: 0 } },
-  { label: 'Déclarer une panne', roles: { admin: 1, chef_maintenance: 1, chef_atelier: 0, technicien: 1, operateur: 1 } },
-  { label: 'Clôturer panne / intervention', roles: { admin: 1, chef_maintenance: 1, chef_atelier: 0, technicien: 1, operateur: 0 } },
-  { label: 'Planifier les interventions', roles: { admin: 1, chef_maintenance: 1, chef_atelier: 0, technicien: 0, operateur: 0 } },
-  { label: 'Gérer les pièces de rechange', roles: { admin: 1, chef_maintenance: 1, chef_atelier: 0, technicien: 0, operateur: 0 } },
-  { label: 'Voir KPI & rapports', roles: { admin: 1, chef_maintenance: 1, chef_atelier: 1, technicien: 0, operateur: 0 } },
-  { label: 'Exporter les données', roles: { admin: 1, chef_maintenance: 1, chef_atelier: 1, technicien: 0, operateur: 0 } },
-  { label: 'Gérer utilisateurs & rôles', roles: { admin: 1, chef_maintenance: 0, chef_atelier: 0, technicien: 0, operateur: 0 } },
-  { label: 'Modifier les paramètres', roles: { admin: 1, chef_maintenance: 0, chef_atelier: 0, technicien: 0, operateur: 0 } },
-];
+// The matrix shown to users is the one the API enforces (@maintflow/shared).
+
 const ROLE_TONE: Record<string, PillTone> = {
   admin: 'info',
   chef_maintenance: 'ok',
@@ -68,8 +56,15 @@ type Tab = 'team' | 'invites' | 'perms';
 
 export default function UsersPage() {
   const qc = useQueryClient();
+  const can = useCan();
+  // Only admins manage access; everyone else gets a read-only directory.
+  const manage = can(Permission.MANAGE_USERS);
   const { data: users } = useQuery({ queryKey: ['users'], queryFn: () => api.users.list() });
-  const { data: invitations } = useQuery({ queryKey: ['invitations'], queryFn: () => api.users.invitations.list() });
+  const { data: invitations } = useQuery({
+    queryKey: ['invitations'],
+    queryFn: () => api.users.invitations.list(),
+    enabled: manage,
+  });
 
   const [tab, setTab] = useState<Tab>('team');
   const [inviting, setInviting] = useState(false);
@@ -99,6 +94,11 @@ export default function UsersPage() {
       <header className="mb-[22px]">
         <h1 className="text-[26px] font-bold tracking-tight">Utilisateurs &amp; Rôles</h1>
         <p className="mt-1 text-[13.5px] text-mute">Gérez les accès, rôles et permissions de votre équipe.</p>
+        {!manage && (
+          <p className="mt-3 inline-flex items-center gap-2 rounded-md border border-line bg-surface-soft px-3 py-2 text-[12.5px] text-mute">
+            <Icon name="shield" size={14} /> Lecture seule — seul un administrateur peut modifier les accès et les rôles.
+          </p>
+        )}
       </header>
 
       <div className="mb-[22px] grid grid-cols-4 gap-3.5">
@@ -112,19 +112,23 @@ export default function UsersPage() {
         <TabButton active={tab === 'team'} onClick={() => setTab('team')}>
           Membres de l’équipe <span className="ml-1.5 font-medium text-faint">{list.length}</span>
         </TabButton>
-        <TabButton active={tab === 'invites'} onClick={() => setTab('invites')}>
-          Invitations envoyées <span className="ml-1.5 font-medium text-faint">{invList.length}</span>
-        </TabButton>
+        {manage && (
+          <TabButton active={tab === 'invites'} onClick={() => setTab('invites')}>
+            Invitations envoyées <span className="ml-1.5 font-medium text-faint">{invList.length}</span>
+          </TabButton>
+        )}
         <TabButton active={tab === 'perms'} onClick={() => setTab('perms')}>
           Matrice des permissions
         </TabButton>
         <div className="flex-1" />
-        <button
-          onClick={() => setInviting(true)}
-          className="mb-1.5 inline-flex items-center gap-2 rounded-md border border-brand bg-brand-bright px-3.5 py-2 text-[13px] font-bold text-brand-deep transition hover:bg-brand"
-        >
-          <Icon name="plus" size={14} /> Inviter un utilisateur
-        </button>
+        {manage && (
+          <button
+            onClick={() => setInviting(true)}
+            className="mb-1.5 inline-flex items-center gap-2 rounded-md border border-brand bg-brand-bright px-3.5 py-2 text-[13px] font-bold text-brand-deep transition hover:bg-brand"
+          >
+            <Icon name="plus" size={14} /> Inviter un utilisateur
+          </button>
+        )}
       </div>
 
       {tab === 'team' && (
@@ -144,17 +148,22 @@ export default function UsersPage() {
               </td>
               <td className="px-4 py-3 text-[12px] text-mute">{u.email}</td>
               <td className="px-4 py-3">
-                <select
-                  value={u.role}
-                  onChange={(e) => updateUser.mutate({ id: u.id, role: e.target.value as UserRole })}
-                  className="cursor-pointer rounded-pill bg-surface-muted px-2.5 py-1 text-[12px] font-semibold text-body"
-                >
-                  {ROLES.map((r) => (
-                    <option key={r} value={r}>
-                      {ROLE_LABEL[r]}
-                    </option>
-                  ))}
-                </select>
+                {manage ? (
+                  <select
+                    value={u.role}
+                    onChange={(e) => updateUser.mutate({ id: u.id, role: e.target.value as UserRole })}
+                    aria-label={`Rôle de ${u.name}`}
+                    className="cursor-pointer rounded-pill bg-surface-muted px-2.5 py-1 text-[12px] font-semibold text-body"
+                  >
+                    {ROLES.map((r) => (
+                      <option key={r} value={r}>
+                        {ROLE_LABEL[r]}
+                      </option>
+                    ))}
+                  </select>
+                ) : (
+                  <Pill tone="mute">{ROLE_LABEL[u.role]}</Pill>
+                )}
               </td>
               <td className="px-4 py-3">{u.workshop}</td>
               <td className="px-4 py-3 text-[12px] text-mute">{fmtDateTime(u.lastLogin)}</td>
@@ -167,14 +176,24 @@ export default function UsersPage() {
                   <Pill tone="crit">Suspendu</Pill>
                 )}
               </td>
-              <td className="px-4 py-3 text-right">
-                <button
-                  onClick={() => setConfirmRevoke(u)}
-                  title="Révoquer l’accès"
-                  className="inline-flex h-8 w-8 items-center justify-center rounded-md text-mute hover:bg-critBg hover:text-critFg"
-                >
-                  <Icon name="plus" size={14} className="rotate-45" />
-                </button>
+              <td className="whitespace-nowrap px-4 py-3 text-right">
+                {manage && u.status === 'active' && (
+                  <button
+                    onClick={() => setConfirmRevoke(u)}
+                    title="Révoquer l’accès"
+                    className="inline-flex h-8 w-8 items-center justify-center rounded-md text-mute hover:bg-critBg hover:text-critFg"
+                  >
+                    <Icon name="plus" size={14} className="rotate-45" />
+                  </button>
+                )}
+                {manage && u.status !== 'active' && (
+                  <button
+                    onClick={() => updateUser.mutate({ id: u.id, status: 'active' })}
+                    className="inline-flex items-center gap-1.5 rounded-md px-2.5 py-[5px] text-xs font-semibold text-brand-deep transition hover:bg-brand-50"
+                  >
+                    <Icon name="refresh" size={12} /> Réactiver
+                  </button>
+                )}
               </td>
             </tr>
           ))}
@@ -203,11 +222,7 @@ export default function UsersPage() {
                 )}
               </td>
               <td className="px-4 py-3 text-right">
-                {inv.status === 'pending' && (
-                  <button className="inline-flex items-center gap-1.5 rounded-md px-2.5 py-[5px] text-xs font-semibold text-mute transition hover:bg-surface-muted">
-                    <Icon name="refresh" size={12} /> Renvoyer
-                  </button>
-                )}
+                {/* Resending is not supported by the API yet — no dead button. */}
               </td>
             </tr>
           ))}
@@ -312,12 +327,12 @@ function PermissionsMatrix() {
             </tr>
           </thead>
           <tbody>
-            {PERMISSIONS.map((p) => (
+            {PERMISSION_MATRIX.map((p) => (
               <tr key={p.label} className="border-b border-line last:border-0 hover:bg-surface-soft">
                 <td className="px-4 py-3">{p.label}</td>
                 {ROLES.map((r) => (
                   <td key={r} className="px-4 py-3 text-center">
-                    {p.roles[r] ? (
+                    {roleHasPermission(r, p.permission) ? (
                       <Icon name="check" size={16} className="mx-auto text-ok" />
                     ) : (
                       <span className="text-faint">—</span>

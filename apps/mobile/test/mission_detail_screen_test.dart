@@ -6,6 +6,7 @@ import 'package:maintflow_mobile/data/models/intervention.dart';
 import 'package:maintflow_mobile/data/location/location_service.dart';
 import 'package:maintflow_mobile/data/models/machine.dart';
 import 'package:maintflow_mobile/data/repositories/sync_service.dart';
+import 'package:maintflow_mobile/features/auth/auth_controller.dart';
 import 'package:maintflow_mobile/features/missions/mission_detail_screen.dart';
 import 'package:maintflow_mobile/features/missions/missions_providers.dart';
 
@@ -104,6 +105,7 @@ void main() {
               .overrideWith((ref) => Stream.value({'m1': _machine})),
           locationServiceProvider.overrideWithValue(_FixedLocation()),
           syncServiceProvider.overrideWithValue(sync),
+          canWorkOnInterventionsProvider.overrideWithValue(true),
         ],
         child: const MaterialApp(
           home: MissionDetailScreen(missionId: 'i-0000-aaaa'),
@@ -118,5 +120,27 @@ void main() {
     expect(sync.patch?['status'], 'in_progress');
     expect(sync.patch?['checkInLat'], 48.8566);
     expect(sync.patch?['checkInLng'], 2.3522);
+  });
+
+  testWidgets('an operator consults the mission but cannot start it',
+      (tester) async {
+    final planned = _mission.copyWith(status: InterventionStatus.planned);
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          missionsProvider.overrideWith((ref) => Stream.value([planned])),
+          machinesByIdProvider
+              .overrideWith((ref) => Stream.value({'m1': _machine})),
+          canWorkOnInterventionsProvider.overrideWithValue(false),
+        ],
+        child: const MaterialApp(
+          home: MissionDetailScreen(missionId: 'i-0000-aaaa'),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Démarrer l’intervention'), findsNothing);
+    expect(find.textContaining('Consultation seule'), findsOneWidget);
   });
 }

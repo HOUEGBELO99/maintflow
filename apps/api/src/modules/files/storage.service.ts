@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger, ServiceUnavailableException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { createClient } from '@supabase/supabase-js';
 import { WebSocket as WsWebSocket } from 'ws';
@@ -17,6 +17,7 @@ if (!globalWithWs.WebSocket) {
  */
 @Injectable()
 export class StorageService {
+  private readonly logger = new Logger(StorageService.name);
   private readonly client: ReturnType<typeof createClient>;
   private readonly bucket: string;
 
@@ -33,7 +34,14 @@ export class StorageService {
     const { error } = await this.client.storage
       .from(this.bucket)
       .upload(path, data, { contentType, upsert: false });
-    if (error) throw new Error(`Storage upload failed: ${error.message}`);
+    if (error) {
+      // Typically a missing bucket (create `${bucket}` in Supabase → Storage)
+      // or a misconfigured key: a 503 the client can explain, not a bare 500.
+      this.logger.error(`Upload to bucket "${this.bucket}" failed: ${error.message}`);
+      throw new ServiceUnavailableException(
+        `File storage unavailable (bucket "${this.bucket}"): ${error.message}`,
+      );
+    }
   }
 
   async signedUrl(path: string, expiresInSeconds = 3600): Promise<string> {
@@ -41,7 +49,8 @@ export class StorageService {
       .from(this.bucket)
       .createSignedUrl(path, expiresInSeconds);
     if (error || !data) {
-      throw new Error(`Signed URL failed: ${error?.message ?? 'unknown error'}`);
+      this.logger.error(`Signed URL in bucket "${this.bucket}" failed: ${error?.message ?? 'unknown'}`);
+      throw new ServiceUnavailableException(`File storage unavailable (bucket "${this.bucket}")`);
     }
     return data.signedUrl;
   }

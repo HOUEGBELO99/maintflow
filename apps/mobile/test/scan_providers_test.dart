@@ -67,5 +67,23 @@ void main() {
     test('returns null for an unparseable payload', () {
       expect(resolveScannedMachine('   ', byCode), isNull);
     });
+
+    test('resolves legacy tags that encoded <web>/machines/<uuid>', () {
+      final m = _machine('MCH-002');
+      final byId = {m.id: m};
+      expect(
+        resolveScannedMachine(
+          'https://maintflow.vercel.app/machines/${m.id.toUpperCase()}',
+          byCode,
+          byId: byId,
+        ),
+        same(m),
+      );
+    });
+
+    test('indexByCode normalises codes', () {
+      final idx = indexByCode([_machine(' mch-004 ')]);
+      expect(idx.keys, ['MCH-004']);
+    });
   });
 }

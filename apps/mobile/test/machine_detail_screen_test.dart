@@ -60,7 +60,7 @@ void main() {
 
     expect(find.text('Presse hydraulique'), findsOneWidget);
     expect(find.text('Critique'), findsOneWidget); // criticality spec
-    expect(find.text('INTERVENTIONS · 1'), findsOneWidget);
+    expect(find.text('MES INTERVENTIONS · 1'), findsOneWidget);
     expect(find.text('Remplacement roulement'), findsOneWidget);
     expect(find.text('Signaler une panne'), findsOneWidget);
   });

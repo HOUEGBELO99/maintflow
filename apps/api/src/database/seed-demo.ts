@@ -32,6 +32,25 @@ const U: Record<string, string> = {
   'T. Khan': '00000000-0000-4000-a000-000000000104',
 };
 
+/**
+ * The demo dataset is written as the prototype's snapshot of 21 May 2026.
+ * Every operational timestamp is shifted by the days elapsed since then, so a
+ * freshly seeded (or reset) demo always reads as "today": a critical fault this
+ * morning, preventive work due in the coming days. Install dates stay as-is.
+ */
+const DEMO_ANCHOR = Date.UTC(2026, 4, 21);
+const MS_PER_DAY = 86_400_000;
+const demoOffsetMs = (() => {
+  const now = new Date();
+  const todayUtc = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate());
+  return Math.round((todayUtc - DEMO_ANCHOR) / MS_PER_DAY) * MS_PER_DAY;
+})();
+
+/** Parse a snapshot date/datetime and move it to the current timeline. */
+function at(snapshot: string): Date {
+  return new Date(new Date(snapshot).getTime() + demoOffsetMs);
+}
+
 /** Resolve a prototype display-name to its user id (throws on a typo). */
 function uid(name: string): string {
   const id = U[name];
@@ -63,7 +82,7 @@ export async function seedDemoData(prisma: PrismaClient): Promise<SeedCounts> {
     { id: '00000000-0000-4000-a000-000000000106', name: 'Hervé Akkari', email: 'h.akkari@usine.fr', role: 'chef_atelier', workshop: 'Direction', color: '#0EA5A0', initials: 'HA', lastLogin: '2026-05-18T11:05:00' },
   ] as const;
   for (const u of users) {
-    const data = { siteId: site.id, ...u, lastLogin: new Date(u.lastLogin) };
+    const data = { siteId: site.id, ...u, lastLogin: at(u.lastLogin) };
     await prisma.user.upsert({ where: { id: u.id }, update: { lastLogin: data.lastLogin }, create: data });
   }
 
@@ -76,7 +95,7 @@ export async function seedDemoData(prisma: PrismaClient): Promise<SeedCounts> {
   for (const inv of invitations) {
     const data = {
       siteId: site.id, email: inv.email, role: inv.role, workshop: inv.workshop,
-      invitedById: inv.by, sentAt: new Date(inv.sentAt), status: inv.status,
+      invitedById: inv.by, sentAt: at(inv.sentAt), status: inv.status,
     };
     await prisma.invitation.upsert({ where: { id: inv.id }, update: data, create: { id: inv.id, ...data } });
   }
@@ -145,8 +164,8 @@ export async function seedDemoData(prisma: PrismaClient): Promise<SeedCounts> {
       create: {
         id: f.id, siteId: site.id, machineId: mid(f.machine), type: f.type, description: f.description,
         severity: f.severity, status: f.status, rootCause: f.rootCause, reportedById: uid(f.by),
-        reportedAt: new Date(f.reportedAt), takenAt: f.takenAt ? new Date(f.takenAt) : null,
-        resolvedAt: f.status === 'resolved' && f.takenAt ? new Date(f.takenAt) : null,
+        reportedAt: at(f.reportedAt), takenAt: f.takenAt ? at(f.takenAt) : null,
+        resolvedAt: f.status === 'resolved' && f.takenAt ? at(f.takenAt) : null,
       },
     });
   }
@@ -163,7 +182,7 @@ export async function seedDemoData(prisma: PrismaClient): Promise<SeedCounts> {
   for (const p of planRules) {
     const data = {
       siteId: site.id, code: p.code, machineId: mid(p.machine), title: p.title, everyWeeks: p.everyWeeks,
-      technicianId: uid(p.by), duration: p.duration, nextDue: new Date(p.nextDue), reminderLead: p.reminderLead, active: true,
+      technicianId: uid(p.by), duration: p.duration, nextDue: at(p.nextDue), reminderLead: p.reminderLead, active: true,
     };
     await prisma.planRule.upsert({ where: { id: p.id }, update: data, create: { id: p.id, ...data } });
   }
@@ -177,7 +196,7 @@ export async function seedDemoData(prisma: PrismaClient): Promise<SeedCounts> {
   for (const r of reminders) {
     const data = {
       siteId: site.id, ruleId: pid(r.rule), title: r.title, machineId: mid(r.machine), technicianId: uid(r.by),
-      dueDate: new Date(r.dueDate), firedAt: new Date(r.firedAt), lead: r.lead, channel: r.channel, status: r.status,
+      dueDate: at(r.dueDate), firedAt: at(r.firedAt), lead: r.lead, channel: r.channel, status: r.status,
     };
     await prisma.reminder.upsert({ where: { id: r.id }, update: data, create: { id: r.id, ...data } });
   }
@@ -204,15 +223,15 @@ export async function seedDemoData(prisma: PrismaClient): Promise<SeedCounts> {
     { id: '00000000-0000-4000-a000-000000000471', machine: 'MCH-006', by: 'L. Moreau', kind: 'preventive', description: 'Contrôle annuel moteur ventilation', scheduledFor: '2026-05-12', duration: 1, status: 'completed', fault: null, plan: 'PM-04', checklist: [], actualDuration: 1, rating: 5, signedBy: 'L. Moreau' },
   ] as const;
   for (const i of interventions) {
-    const startedAt = i.status === 'in_progress' || i.status === 'completed' ? new Date(`${i.scheduledFor}T08:00:00`) : null;
+    const startedAt = i.status === 'in_progress' || i.status === 'completed' ? at(`${i.scheduledFor}T08:00:00`) : null;
     const endHour = String(8 + Math.round(i.actualDuration ?? i.duration)).padStart(2, '0');
-    const completedAt = i.status === 'completed' ? new Date(`${i.scheduledFor}T${endHour}:00:00`) : null;
+    const completedAt = i.status === 'completed' ? at(`${i.scheduledFor}T${endHour}:00:00`) : null;
     await prisma.intervention.upsert({
       where: { id: i.id },
       update: {},
       create: {
         id: i.id, siteId: site.id, machineId: mid(i.machine), technicianId: uid(i.by), kind: i.kind,
-        description: i.description, scheduledFor: new Date(i.scheduledFor), duration: i.duration, status: i.status,
+        description: i.description, scheduledFor: at(i.scheduledFor), duration: i.duration, status: i.status,
         linkedFaultId: i.fault ? fid(i.fault) : null, planRuleId: i.plan ? pid(i.plan) : null,
         checklist: i.checklist as unknown as object[], actualDuration: i.actualDuration, rating: i.rating,
         signedBy: i.signedBy, startedAt, completedAt,

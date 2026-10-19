@@ -4,7 +4,7 @@ import type { PlanRule, Prisma } from '@prisma/client';
 import type { UpcomingReminder } from '@maintflow/shared';
 import { InterventionKind, InterventionStatus } from '@maintflow/shared';
 import { PrismaService } from '../prisma/prisma.service';
-import { addWeeksISO, daysUntil, minusDaysISO, toISODate } from '../../common/scenario-clock';
+import { addWeeksISO, daysUntil, minusDaysISO, toISODate } from '../../common/dates';
 import type { CreatePlanRuleDto } from './dto/create-plan-rule.dto';
 import type { UpdatePlanRuleDto } from './dto/update-plan-rule.dto';
 
@@ -14,7 +14,7 @@ const REMINDER_CHANNEL = 'Notification + e-mail';
  * Preventive-maintenance planning, ported from the prototype's PlanningScreen:
  * recurring rules, automatic reminders, and one-click work-order generation.
  * All queries are scoped by `siteId` (multi-tenant), taken from the auth user.
- * Relative dates are anchored to the seeded scenario (see scenario-clock).
+ * Relative dates (J-N, overdue) are computed against today (see common/dates).
  */
 @Injectable()
 export class PlanningService {

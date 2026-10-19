@@ -63,11 +63,21 @@ ResponseBody _status(int code, [Object body = '']) => ResponseBody.fromString(
       },
     );
 
-Dio _dio(_Adapter adapter, _Store store, _Refresher refresher) {
+Dio _dio(
+  _Adapter adapter,
+  _Store store,
+  _Refresher refresher, {
+  void Function()? onSessionExpired,
+}) {
   final dio = Dio(BaseOptions(baseUrl: 'http://localhost:4000/api/v1'));
   dio.httpClientAdapter = adapter;
   dio.interceptors.add(
-    AuthInterceptor(dio: dio, tokens: store, refresher: refresher),
+    AuthInterceptor(
+      dio: dio,
+      tokens: store,
+      refresher: refresher,
+      onSessionExpired: onSessionExpired,
+    ),
   );
   return dio;
 }
@@ -140,5 +150,67 @@ void main() {
     );
     expect(refresher.calls, 1); // one refresh attempt only
     expect(adapter.calls, 2); // initial + single retry
+  });
+
+  group('session expiry', () {
+    test('a dead session (401, no refresh) signs the user out', () async {
+      var expired = 0;
+      final dio = _dio(
+        _Adapter((_) => _status(401)),
+        _Store('stale'),
+        _Refresher(null),
+        onSessionExpired: () => expired++,
+      );
+      await expectLater(
+        dio.get<dynamic>('/interventions'),
+        throwsA(isA<DioException>()),
+      );
+      expect(expired, 1);
+    });
+
+    test('still 401 after a refresh also signs out', () async {
+      var expired = 0;
+      final dio = _dio(
+        _Adapter((_) => _status(401)),
+        _Store('stale'),
+        _Refresher('new-but-useless'),
+        onSessionExpired: () => expired++,
+      );
+      await expectLater(
+        dio.get<dynamic>('/machines'),
+        throwsA(isA<DioException>()),
+      );
+      expect(expired, 1);
+    });
+
+    test('sign-in calls report their own 401 (no forced sign-out)', () async {
+      var expired = 0;
+      final dio = _dio(
+        _Adapter((_) => _status(401)),
+        _Store('fresh'),
+        _Refresher(null),
+        onSessionExpired: () => expired++,
+      );
+      await expectLater(
+        dio.get<dynamic>('/auth/me'),
+        throwsA(isA<DioException>()),
+      );
+      expect(expired, 0);
+    });
+
+    test('other errors never sign out', () async {
+      var expired = 0;
+      final dio = _dio(
+        _Adapter((_) => _status(500)),
+        _Store('tok'),
+        _Refresher(null),
+        onSessionExpired: () => expired++,
+      );
+      await expectLater(
+        dio.get<dynamic>('/machines'),
+        throwsA(isA<DioException>()),
+      );
+      expect(expired, 0);
+    });
   });
 }

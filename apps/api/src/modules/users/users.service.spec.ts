@@ -4,6 +4,7 @@ import { ConflictException, NotFoundException } from '@nestjs/common';
 
 import { PrismaService } from '../prisma/prisma.service';
 import { SupabaseAuthAdminService } from './supabase-auth-admin.service';
+import { AuthProfileCache } from '../../common/auth/auth-profile.cache';
 import { UsersService } from './users.service';
 
 describe('UsersService', () => {
@@ -30,6 +31,7 @@ describe('UsersService', () => {
         UsersService,
         { provide: PrismaService, useValue: prisma },
         { provide: SupabaseAuthAdminService, useValue: authAdmin },
+        { provide: AuthProfileCache, useValue: { invalidate: jest.fn() } },
       ],
     }).compile();
     service = moduleRef.get(UsersService);

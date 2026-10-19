@@ -7,12 +7,18 @@ import 'package:maintflow_mobile/data/models/intervention.dart';
 import 'package:maintflow_mobile/data/models/machine.dart';
 import 'package:maintflow_mobile/data/repositories/missions_repository.dart';
 import 'package:maintflow_mobile/features/missions/missions_providers.dart';
+import 'package:maintflow_mobile/features/auth/auth_controller.dart';
 
 /// All cached machines (offline-first), sorted by code, with a swallowed
 /// background refresh. Backs the "Mon parc" home screen.
 final machinesListProvider = StreamProvider.autoDispose<List<Machine>>((ref) {
   final repo = ref.watch(missionsRepositoryProvider);
-  unawaited(repo.refreshMachines().catchError((Object _) {}));
+  // Refresh only once signed in, and again when the session is restored:
+  // firing before the token is loaded 401s and leaves the cache empty.
+  final signedIn = ref.watch(
+    authControllerProvider.select((s) => s.valueOrNull?.id != null),
+  );
+  if (signedIn) unawaited(repo.refreshMachines().catchError((Object _) {}));
   return repo.watchMachines().map(
         (list) => list.toList()..sort((a, b) => a.code.compareTo(b.code)),
       );

@@ -1,7 +1,7 @@
-import { BadRequestException, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ForbiddenException, NotFoundException } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 
-import { InterventionKind, InterventionStatus } from '@maintflow/shared';
+import { FaultStatus, InterventionKind, InterventionStatus, UserRole } from '@maintflow/shared';
 import { PrismaService } from '../prisma/prisma.service';
 import { InterventionsService } from './interventions.service';
 
@@ -30,14 +30,25 @@ describe('InterventionsService', () => {
       findFirst: jest.fn(),
       create: jest.fn(),
       update: jest.fn() as jest.Mock<Promise<unknown>, [{ where: unknown; data: UpdateData }]>,
+      count: jest.fn(),
     },
-    machine: { findFirst: jest.fn() },
+    machine: { findFirst: jest.fn(), updateMany: jest.fn() },
     user: { findFirst: jest.fn() },
-    fault: { findFirst: jest.fn() },
+    fault: {
+      findFirst: jest.fn(),
+      update: jest.fn() as jest.Mock<Promise<unknown>, [{ where: unknown; data: Record<string, unknown> }]>,
+      count: jest.fn(),
+    },
+    $transaction: jest.fn(),
   };
+  // Interactive transactions run the callback against the same mock.
+  prisma.$transaction.mockImplementation((fn: (tx: unknown) => unknown) => fn(prisma));
 
   beforeEach(async () => {
     jest.clearAllMocks();
+    prisma.$transaction.mockImplementation((fn: (tx: unknown) => unknown) => fn(prisma));
+    prisma.fault.count.mockResolvedValue(0);
+    prisma.intervention.count.mockResolvedValue(0);
     const moduleRef = await Test.createTestingModule({
       providers: [InterventionsService, { provide: PrismaService, useValue: prisma }],
     }).compile();
@@ -116,5 +127,100 @@ describe('InterventionsService', () => {
     const arg = prisma.intervention.update.mock.calls[0]![0];
     expect(arg.data.checkInLat).toBe(48.8566);
     expect(arg.data.checkInLng).toBe(2.3522);
+  });
+
+  it('completing a corrective intervention resolves its linked fault and frees the machine', async () => {
+    prisma.intervention.findFirst.mockResolvedValue({
+      id: 'i-1',
+      siteId: 'site-1',
+      machineId: 'm-1',
+      linkedFaultId: 'f-1',
+      status: InterventionStatus.IN_PROGRESS,
+      startedAt: new Date(),
+    });
+    prisma.intervention.update.mockResolvedValue({});
+    prisma.fault.findFirst.mockResolvedValue({ status: FaultStatus.IN_PROGRESS, takenAt: new Date() });
+    await service.update('site-1', 'i-1', { status: InterventionStatus.COMPLETED });
+
+    const faultArg = prisma.fault.update.mock.calls[0]![0];
+    expect(faultArg.where).toEqual({ id: 'f-1' });
+    expect(faultArg.data.status).toBe(FaultStatus.RESOLVED);
+    expect(faultArg.data.resolvedAt).toBeInstanceOf(Date);
+    expect(prisma.machine.updateMany).toHaveBeenCalledWith({
+      where: { id: 'm-1', siteId: 'site-1' },
+      data: { state: 'ok' },
+    });
+  });
+
+  it('starting the work takes a pending linked fault in charge', async () => {
+    prisma.intervention.findFirst.mockResolvedValue({
+      id: 'i-1',
+      siteId: 'site-1',
+      machineId: 'm-1',
+      linkedFaultId: 'f-1',
+      status: InterventionStatus.PLANNED,
+      startedAt: null,
+    });
+    prisma.intervention.update.mockResolvedValue({});
+    prisma.fault.findFirst.mockResolvedValue({ status: FaultStatus.PENDING, takenAt: null });
+    prisma.intervention.count.mockResolvedValue(1);
+    await service.update('site-1', 'i-1', { status: InterventionStatus.IN_PROGRESS });
+
+    const faultArg = prisma.fault.update.mock.calls[0]![0];
+    expect(faultArg.data.status).toBe(FaultStatus.IN_PROGRESS);
+    expect(faultArg.data.takenAt).toBeInstanceOf(Date);
+    expect(prisma.machine.updateMany).toHaveBeenCalledWith({
+      where: { id: 'm-1', siteId: 'site-1' },
+      data: { state: 'maintenance' },
+    });
+  });
+
+  it('does not touch the fault or machine when the status is unchanged', async () => {
+    prisma.intervention.findFirst.mockResolvedValue({
+      id: 'i-1',
+      siteId: 'site-1',
+      machineId: 'm-1',
+      linkedFaultId: 'f-1',
+      status: InterventionStatus.IN_PROGRESS,
+      startedAt: new Date(),
+    });
+    prisma.intervention.update.mockResolvedValue({});
+    await service.update('site-1', 'i-1', { description: 'note' });
+    expect(prisma.fault.update).not.toHaveBeenCalled();
+    expect(prisma.machine.updateMany).not.toHaveBeenCalled();
+  });
+
+  it('a technician cannot reschedule or reassign work', async () => {
+    await expect(
+      service.update('site-1', 'i-1', { scheduledFor: '2026-12-01' }, UserRole.TECHNICIEN),
+    ).rejects.toBeInstanceOf(ForbiddenException);
+    await expect(
+      service.update('site-1', 'i-1', { technicianId: 'u-2' }, UserRole.TECHNICIEN),
+    ).rejects.toBeInstanceOf(ForbiddenException);
+    expect(prisma.intervention.update).not.toHaveBeenCalled();
+  });
+
+  it('a technician can still do field work (status, closure)', async () => {
+    prisma.intervention.findFirst.mockResolvedValue({
+      id: 'i-1', siteId: 'site-1', machineId: 'm-1', linkedFaultId: null,
+      status: InterventionStatus.IN_PROGRESS, startedAt: new Date(),
+    });
+    prisma.intervention.update.mockResolvedValue({});
+    await service.update(
+      'site-1', 'i-1',
+      { status: InterventionStatus.COMPLETED, actualDuration: 2, signedBy: 'S. Diallo' },
+      UserRole.TECHNICIEN,
+    );
+    expect(prisma.intervention.update).toHaveBeenCalled();
+  });
+
+  it('a chef de maintenance can reschedule', async () => {
+    prisma.intervention.findFirst.mockResolvedValue({
+      id: 'i-1', siteId: 'site-1', machineId: 'm-1', linkedFaultId: null,
+      status: InterventionStatus.PLANNED, startedAt: null,
+    });
+    prisma.intervention.update.mockResolvedValue({});
+    await service.update('site-1', 'i-1', { scheduledFor: '2026-12-01' }, UserRole.CHEF_MAINTENANCE);
+    expect(prisma.intervention.update).toHaveBeenCalled();
   });
 });

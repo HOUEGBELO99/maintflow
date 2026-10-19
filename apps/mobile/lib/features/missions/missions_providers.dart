@@ -38,7 +38,12 @@ final missionByIdProvider =
 final machinesByIdProvider =
     StreamProvider.autoDispose<Map<String, Machine>>((ref) {
   final repo = ref.watch(missionsRepositoryProvider);
-  unawaited(repo.refreshMachines().catchError((Object _) {}));
+  // Refresh only once signed in, and again when the session is restored:
+  // firing before the token is loaded 401s and leaves the cache empty.
+  final signedIn = ref.watch(
+    authControllerProvider.select((s) => s.valueOrNull?.id != null),
+  );
+  if (signedIn) unawaited(repo.refreshMachines().catchError((Object _) {}));
   return repo
       .watchMachines()
       .map((list) => <String, Machine>{for (final m in list) m.id: m});

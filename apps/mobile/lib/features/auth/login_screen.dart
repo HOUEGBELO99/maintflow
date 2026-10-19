@@ -1,7 +1,10 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:maintflow_mobile/core/theme/app_theme.dart';
+import 'package:maintflow_mobile/data/auth/sign_in_error.dart';
 import 'package:maintflow_mobile/features/auth/auth_controller.dart';
 
 /// Login screen — dark hero strip on top (mirrors the desktop login-aside DNA),
@@ -18,23 +21,33 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   final _password = TextEditingController();
   bool _obscure = true;
 
+  /// Set when sign-in takes long — usually the API waking up.
+  bool _slow = false;
+  Timer? _slowTimer;
+
   @override
   void dispose() {
+    _slowTimer?.cancel();
     _email.dispose();
     _password.dispose();
     super.dispose();
   }
 
   Future<void> _signIn() async {
+    _slowTimer?.cancel();
+    _slowTimer = Timer(const Duration(seconds: 4), () {
+      if (mounted) setState(() => _slow = true);
+    });
     await ref
         .read(authControllerProvider.notifier)
         .signIn(_email.text.trim(), _password.text);
+    _slowTimer?.cancel();
+    if (!mounted) return;
+    setState(() => _slow = false);
     final state = ref.read(authControllerProvider);
-    if (state.hasError && mounted) {
+    if (state.hasError) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Connexion impossible — vérifiez vos identifiants.'),
-        ),
+        SnackBar(content: Text(describeSignInError(state.error!))),
       );
     }
   }
@@ -147,6 +160,32 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                             ),
                             const SizedBox(height: 12),
                             const Spacer(),
+                            if (ref.watch(sessionExpiredProvider) && !loading)
+                              const Padding(
+                                padding: EdgeInsets.only(bottom: 10),
+                                child: Text(
+                                  'Votre session a expiré — reconnectez-vous.',
+                                  textAlign: TextAlign.center,
+                                  style: TextStyle(
+                                    fontSize: 12.5,
+                                    fontWeight: FontWeight.w600,
+                                    color: AppColors.crit,
+                                  ),
+                                ),
+                              ),
+                            if (loading && _slow)
+                              const Padding(
+                                padding: EdgeInsets.only(bottom: 10),
+                                child: Text(
+                                  'Le serveur démarre, cela peut prendre '
+                                  "jusqu'à une minute…",
+                                  textAlign: TextAlign.center,
+                                  style: TextStyle(
+                                    fontSize: 12.5,
+                                    color: AppColors.mute,
+                                  ),
+                                ),
+                              ),
                             _PrimaryCta(
                               label: 'Se connecter',
                               loading: loading,
@@ -156,7 +195,16 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                             _GhostCta(
                               label: 'Scanner mon invitation',
                               icon: Icons.qr_code_scanner,
-                              onTap: () {},
+                              onTap: () =>
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text(
+                                    "Les invitations arrivent par e-mail : "
+                                    'ouvrez le lien reçu pour choisir votre '
+                                    'mot de passe, puis connectez-vous ici.',
+                                  ),
+                                ),
+                              ),
                             ),
                             const SizedBox(height: 8),
                           ],

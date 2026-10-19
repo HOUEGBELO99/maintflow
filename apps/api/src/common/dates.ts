@@ -1,12 +1,7 @@
 /**
- * Reference "now" for the seeded demo scenario, matching the prototype's
- * `NOW = new Date("2026-05-21T09:30:00")`. The seeded dataset is a fixed
- * snapshot, so relative computations (J-N reminders, due-in days) are anchored
- * here rather than the wall clock. Swap for `new Date()` once real data flows.
+ * Date helpers for day-granularity business dates (due dates, reminders).
+ * Business dates are stored at UTC midnight; "today" is the wall clock in UTC.
  */
-export const SCENARIO_TODAY = '2026-05-21';
-export const SCENARIO_NOW = new Date('2026-05-21T09:30:00.000Z');
-
 const MS_PER_DAY = 86_400_000;
 
 const atUtcMidnight = (isoDate: string): number => new Date(`${isoDate}T00:00:00.000Z`).getTime();
@@ -30,7 +25,12 @@ export function minusDaysISO(isoDate: string, days: number): string {
   return toISODate(d);
 }
 
-/** Whole days from the reference date until `isoDate` (negative = past). */
-export function daysUntil(isoDate: string, today: string = SCENARIO_TODAY): number {
+/** Today's date (YYYY-MM-DD, UTC). */
+export function todayISO(): string {
+  return toISODate(new Date());
+}
+
+/** Whole days from `today` until `isoDate` (negative = past). */
+export function daysUntil(isoDate: string, today: string = todayISO()): number {
   return Math.round((atUtcMidnight(isoDate) - atUtcMidnight(today)) / MS_PER_DAY);
 }

@@ -9,6 +9,7 @@ import 'package:maintflow_mobile/data/models/intervention.dart';
 import 'package:maintflow_mobile/data/location/location_service.dart';
 import 'package:maintflow_mobile/data/models/machine.dart';
 import 'package:maintflow_mobile/data/repositories/sync_service.dart';
+import 'package:maintflow_mobile/features/auth/auth_controller.dart';
 import 'package:maintflow_mobile/features/missions/missions_providers.dart';
 
 const _statusWire = {
@@ -167,7 +168,7 @@ const _taskSuggestions = [
   'Nettoyage & remise en service',
 ];
 
-class _Body extends StatelessWidget {
+class _Body extends ConsumerWidget {
   const _Body({
     required this.mission,
     required this.onToggle,
@@ -187,10 +188,12 @@ class _Body extends StatelessWidget {
   final VoidCallback onClose;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final canWork = ref.watch(canWorkOnInterventionsProvider);
     final done = mission.checklist.where((c) => c.done).length;
-    final editable = mission.status == InterventionStatus.planned ||
-        mission.status == InterventionStatus.inProgress;
+    final editable = canWork &&
+        (mission.status == InterventionStatus.planned ||
+            mission.status == InterventionStatus.inProgress);
     final allDone =
         mission.checklist.isNotEmpty && done == mission.checklist.length;
     return ListView(
@@ -297,12 +300,23 @@ class _Body extends StatelessWidget {
               ),
             ),
         const SizedBox(height: 14),
-        _ActionButton(
-          status: mission.status,
-          allDone: allDone,
-          onStart: onStart,
-          onClose: onClose,
-        ),
+        if (canWork)
+          _ActionButton(
+            status: mission.status,
+            allDone: allDone,
+            onStart: onStart,
+            onClose: onClose,
+          )
+        else
+          const Padding(
+            padding: EdgeInsets.symmetric(vertical: 12),
+            child: Text(
+              'Consultation seule — votre rôle ne permet pas de démarrer '
+              'ou de clôturer une intervention.',
+              textAlign: TextAlign.center,
+              style: TextStyle(fontSize: 12.5, color: AppColors.mute),
+            ),
+          ),
       ],
     );
   }

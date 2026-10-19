@@ -6,7 +6,8 @@ import { useEffect, useState } from 'react';
 import { Icon } from '@/components/icon';
 import { ConfirmDialog, Field, inputClass, Modal } from '@/components/ui/modal';
 import { api, type FaultInput } from '@/lib/api-client';
-import type { Fault, FaultSeverity, FaultStatus, FaultType, Machine } from '@maintflow/shared';
+import { Permission, type Fault, type FaultSeverity, type FaultStatus, type FaultType, type Machine } from '@maintflow/shared';
+import { useCan } from '@/lib/permissions';
 
 const TYPE_LABEL: Record<string, string> = {
   mecanique: 'Mécanique',
@@ -65,6 +66,7 @@ const fmtDateTime = (iso: string) =>
   new Date(iso).toLocaleString('fr-FR', { dateStyle: 'short', timeStyle: 'short' });
 
 export default function FaultsPage() {
+  const can = useCan();
   const qc = useQueryClient();
   const { data: faults } = useQuery({ queryKey: ['faults'], queryFn: () => api.faults.list() });
   const { data: machines } = useQuery({ queryKey: ['machines'], queryFn: () => api.machines.list() });
@@ -131,20 +133,22 @@ export default function FaultsPage() {
           </Chip>
         ))}
         <div className="flex-1" />
-        <button
-          onClick={() => setAdding(true)}
-          className="inline-flex items-center gap-2 rounded-md border border-brand bg-brand-bright px-3.5 py-2 text-[13px] font-bold text-brand-deep transition hover:bg-brand"
-        >
-          <Icon name="plus" size={14} /> Déclarer une panne
-        </button>
+        {can(Permission.REPORT_FAULTS) && (
+          <button
+            onClick={() => setAdding(true)}
+            className="inline-flex items-center gap-2 rounded-md border border-brand bg-brand-bright px-3.5 py-2 text-[13px] font-bold text-brand-deep transition hover:bg-brand"
+          >
+            <Icon name="plus" size={14} /> Déclarer une panne
+          </button>
+        )}
       </div>
 
-      <div className="overflow-hidden rounded-lg border border-line bg-surface">
+      <div className="overflow-x-auto rounded-lg border border-line bg-surface">
         <table className="w-full border-collapse text-[13px]">
           <thead>
             <tr className="bg-surface-soft text-[11px] uppercase tracking-[0.06em] text-mute">
               {['Réf.', 'Machine', 'Type', 'Description', 'Gravité', 'Immobilisation', 'Signalée', 'Statut', ''].map((h, i) => (
-                <th key={i} className="border-b border-line px-4 py-2.5 text-left font-semibold">
+                <th key={i} className="whitespace-nowrap border-b border-line px-4 py-2.5 text-left font-semibold">
                   {h}
                 </th>
               ))}
@@ -155,8 +159,8 @@ export default function FaultsPage() {
               const m = machine(f.machineId);
               return (
                 <tr key={f.id} className="border-b border-line last:border-0 hover:bg-surface-soft">
-                  <td className="px-4 py-3 font-mono text-mute">F-{f.id.slice(-4).toUpperCase()}</td>
-                  <td className="px-4 py-3">
+                  <td className="whitespace-nowrap px-4 py-3 font-mono text-mute">F-{f.id.slice(-4).toUpperCase()}</td>
+                  <td className="min-w-[170px] px-4 py-3">
                     <div className="font-semibold">{m?.name ?? f.machineId}</div>
                     <div className="text-[11.5px] text-mute">{m?.workshop}</div>
                   </td>
@@ -181,15 +185,17 @@ export default function FaultsPage() {
                       )}
                     </div>
                   </td>
-                  <td className="px-4 py-3">
+                  <td className="whitespace-nowrap px-4 py-3">
                     {f.status !== 'resolved' ? <FaultChrono from={f.reportedAt} /> : <span className="text-mute">—</span>}
                   </td>
-                  <td className="px-4 py-3 text-[12px] text-mute">{fmtDateTime(f.reportedAt)}</td>
+                  <td className="whitespace-nowrap px-4 py-3 text-[12px] text-mute">{fmtDateTime(f.reportedAt)}</td>
                   <td className="px-4 py-3">
                     <select
                       value={f.status}
                       onChange={(e) => updateF.mutate({ id: f.id, status: e.target.value as FaultStatus })}
-                      className="cursor-pointer rounded-pill border border-line bg-surface-muted px-2.5 py-1 text-[11.5px] font-semibold text-body"
+                      disabled={!can(Permission.MANAGE_INTERVENTIONS)}
+                      aria-label="Statut de la panne"
+                      className="cursor-pointer rounded-pill disabled:cursor-default disabled:opacity-80 border border-line bg-surface-muted px-2.5 py-1 text-[11.5px] font-semibold text-body"
                     >
                       {(['pending', 'in_progress', 'resolved'] as const).map((s) => (
                         <option key={s} value={s}>
@@ -198,7 +204,7 @@ export default function FaultsPage() {
                       ))}
                     </select>
                   </td>
-                  <td className="px-4 py-3 text-right">
+                  <td className="whitespace-nowrap px-4 py-3 text-right">
                     {f.hasPhoto && (
                       <button
                         onClick={() => setPhotosFor(f)}
@@ -208,13 +214,15 @@ export default function FaultsPage() {
                         <Icon name="camera" size={14} />
                       </button>
                     )}
-                    <button
-                      onClick={() => setConfirmDel(f)}
-                      title="Supprimer"
-                      className="inline-flex h-8 w-8 items-center justify-center rounded-md text-mute hover:bg-critBg hover:text-critFg"
-                    >
-                      <Icon name="trash" size={14} />
-                    </button>
+                    {can(Permission.PLAN_INTERVENTIONS) && (
+                      <button
+                        onClick={() => setConfirmDel(f)}
+                        title="Supprimer"
+                        className="inline-flex h-8 w-8 items-center justify-center rounded-md text-mute hover:bg-critBg hover:text-critFg"
+                      >
+                        <Icon name="trash" size={14} />
+                      </button>
+                    )}
                   </td>
                 </tr>
               );

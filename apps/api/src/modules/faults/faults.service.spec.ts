@@ -19,12 +19,20 @@ describe('FaultsService', () => {
       findFirst: jest.fn(),
       create: jest.fn() as jest.Mock<Promise<unknown>, [{ data: Record<string, unknown> }]>,
       update: jest.fn() as jest.Mock<Promise<unknown>, [{ where: unknown; data: UpdateData }]>,
+      count: jest.fn(),
     },
-    machine: { findFirst: jest.fn() },
+    intervention: { count: jest.fn() },
+    machine: { findFirst: jest.fn(), updateMany: jest.fn() },
+    $transaction: jest.fn(),
   };
+  // Interactive transactions run the callback against the same mock.
+  prisma.$transaction.mockImplementation((fn: (tx: unknown) => unknown) => fn(prisma));
 
   beforeEach(async () => {
     jest.clearAllMocks();
+    prisma.$transaction.mockImplementation((fn: (tx: unknown) => unknown) => fn(prisma));
+    prisma.fault.count.mockResolvedValue(0);
+    prisma.intervention.count.mockResolvedValue(0);
     const moduleRef = await Test.createTestingModule({
       providers: [FaultsService, { provide: PrismaService, useValue: prisma }],
     }).compile();
@@ -115,5 +123,36 @@ describe('FaultsService', () => {
     await service.update('site-1', 'f-1', { status: FaultStatus.RESOLVED });
     const arg = prisma.fault.update.mock.calls[0]![0];
     expect(arg.data.resolvedAt).toBeInstanceOf(Date);
+  });
+
+  it('stops the machine when a critical fault is declared', async () => {
+    prisma.machine.findFirst.mockResolvedValue({ id: 'm-1' });
+    prisma.fault.create.mockResolvedValue({ id: 'f-1' });
+    prisma.fault.count.mockResolvedValue(1); // the new critical fault is open
+    await service.create('site-1', 'user-1', {
+      machineId: 'm-1',
+      type: FaultType.MECANIQUE,
+      description: 'roulement HS',
+      severity: FaultSeverity.CRITICAL,
+    });
+    expect(prisma.machine.updateMany).toHaveBeenCalledWith({
+      where: { id: 'm-1', siteId: 'site-1' },
+      data: { state: 'fault' },
+    });
+  });
+
+  it('puts the machine back to ok once its fault is resolved', async () => {
+    prisma.fault.findFirst.mockResolvedValue({
+      id: 'f-1',
+      status: FaultStatus.IN_PROGRESS,
+      takenAt: new Date(),
+      machineId: 'm-1',
+    });
+    prisma.fault.update.mockResolvedValue({});
+    await service.update('site-1', 'f-1', { status: FaultStatus.RESOLVED });
+    expect(prisma.machine.updateMany).toHaveBeenCalledWith({
+      where: { id: 'm-1', siteId: 'site-1' },
+      data: { state: 'ok' },
+    });
   });
 });

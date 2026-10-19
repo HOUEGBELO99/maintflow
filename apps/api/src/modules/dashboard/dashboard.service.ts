@@ -94,23 +94,18 @@ export class DashboardService {
     siteId: string,
     n = 5,
   ): Promise<{ machineId: string; code: string; name: string; count: number }[]> {
-    const grouped = await this.prisma.fault.groupBy({
-      by: ['machineId'],
-      where: { siteId },
-      _count: { _all: true },
-      orderBy: { _count: { machineId: 'desc' } },
+    // One query: the database counts and ranks (was groupBy + a second lookup).
+    const machines = await this.prisma.machine.findMany({
+      where: { siteId, faults: { some: {} } },
+      select: { id: true, code: true, name: true, _count: { select: { faults: true } } },
+      orderBy: [{ faults: { _count: 'desc' } }, { code: 'asc' }],
       take: n,
     });
-    const machines = await this.prisma.machine.findMany({
-      where: { siteId, id: { in: grouped.map((g) => g.machineId) } },
-      select: { id: true, code: true, name: true },
-    });
-    const byId = new Map(machines.map((m) => [m.id, m]));
-    return grouped.map((g) => ({
-      machineId: g.machineId,
-      code: byId.get(g.machineId)?.code ?? '—',
-      name: byId.get(g.machineId)?.name ?? '—',
-      count: g._count._all,
+    return machines.map((m) => ({
+      machineId: m.id,
+      code: m.code,
+      name: m.name,
+      count: m._count.faults,
     }));
   }
 }
