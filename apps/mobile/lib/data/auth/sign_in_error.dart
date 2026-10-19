@@ -46,9 +46,9 @@ String describeSignInError(Object error) {
           return 'Le serveur rencontre une erreur — réessayez plus tard.';
         }
         return 'Connexion impossible (erreur $status).';
-      case DioExceptionType.badCertificate:
-      case DioExceptionType.cancel:
-      case DioExceptionType.unknown:
+      // Any other kind (incl. ones added by future Dio versions) falls
+      // through to the generic message below.
+      default:
         break;
     }
   }

@@ -85,9 +85,9 @@ String describeReportError(Object error, {required bool withPhoto}) {
           return 'Le serveur n’a pas pu enregistrer la panne — réessayez.';
         }
         return 'Déclaration refusée (erreur $status).';
-      case DioExceptionType.badCertificate:
-      case DioExceptionType.cancel:
-      case DioExceptionType.unknown:
+      // Any other kind (incl. ones added by future Dio versions) falls
+      // through to the generic message below.
+      default:
         break;
     }
   }
