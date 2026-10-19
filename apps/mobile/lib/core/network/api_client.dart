@@ -16,8 +16,9 @@ final apiClientProvider = Provider<Dio>((ref) {
   final dio = Dio(
     BaseOptions(
       baseUrl: '${Env.apiUrl}/api/v1',
-      connectTimeout: const Duration(seconds: 10),
-      receiveTimeout: const Duration(seconds: 20),
+      connectTimeout: const Duration(seconds: 20),
+      // Covers a cold start of the API on free hosting (~30-75 s).
+      receiveTimeout: const Duration(seconds: 60),
       contentType: 'application/json',
     ),
   );
