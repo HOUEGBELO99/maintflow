@@ -3,6 +3,7 @@ import type { Prisma } from '@prisma/client';
 
 import { FaultSeverity, FaultStatus, FaultType } from '@maintflow/shared';
 import { PrismaService } from '../prisma/prisma.service';
+import { syncMachineState } from '../machines/machine-state';
 import type { CreateFaultDto } from './dto/create-fault.dto';
 import type { UpdateFaultDto } from './dto/update-fault.dto';
 
@@ -76,15 +77,20 @@ export class FaultsService {
     });
     if (!machine) throw new NotFoundException(`Machine ${dto.machineId} not found`);
 
-    return this.prisma.fault.create({
-      data: {
-        siteId,
-        machineId: dto.machineId,
-        type: dto.type,
-        description: dto.description,
-        severity: dto.severity,
-        reportedById,
-      },
+    // A critical fault stops the machine (prototype rule) — same transaction.
+    return this.prisma.$transaction(async (tx) => {
+      const fault = await tx.fault.create({
+        data: {
+          siteId,
+          machineId: dto.machineId,
+          type: dto.type,
+          description: dto.description,
+          severity: dto.severity,
+          reportedById,
+        },
+      });
+      await syncMachineState(tx, siteId, dto.machineId);
+      return fault;
     });
   }
 
@@ -92,7 +98,7 @@ export class FaultsService {
     // Ownership + the fields the lifecycle stamping needs.
     const current = await this.prisma.fault.findFirst({
       where: { id, siteId },
-      select: { id: true, status: true, takenAt: true },
+      select: { id: true, status: true, takenAt: true, machineId: true },
     });
     if (!current) throw new NotFoundException(`Fault ${id} not found`);
 
@@ -115,13 +121,23 @@ export class FaultsService {
       }
     }
 
-    await this.prisma.fault.update({ where: { id }, data });
+    await this.prisma.$transaction(async (tx) => {
+      await tx.fault.update({ where: { id }, data });
+      // Status/severity drive the machine state (resolved → back to ok).
+      if (dto.status !== undefined || dto.severity !== undefined) {
+        await syncMachineState(tx, siteId, current.machineId);
+      }
+    });
     return this.findOne(siteId, id);
   }
 
   async remove(siteId: string, id: string) {
-    await this.findOne(siteId, id);
-    await this.prisma.fault.delete({ where: { id } });
+    const fault = await this.prisma.fault.findFirst({ where: { id, siteId }, select: { machineId: true } });
+    if (!fault) throw new NotFoundException(`Fault ${id} not found`);
+    await this.prisma.$transaction(async (tx) => {
+      await tx.fault.delete({ where: { id } });
+      await syncMachineState(tx, siteId, fault.machineId);
+    });
     return { id, deleted: true };
   }
 }

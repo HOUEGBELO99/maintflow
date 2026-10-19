@@ -1,8 +1,9 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 
-import { InterventionKind, InterventionStatus } from '@maintflow/shared';
+import { FaultStatus, InterventionKind, InterventionStatus } from '@maintflow/shared';
 import { PrismaService } from '../prisma/prisma.service';
+import { syncMachineState } from '../machines/machine-state';
 import type { CreateInterventionDto } from './dto/create-intervention.dto';
 import type { UpdateInterventionDto } from './dto/update-intervention.dto';
 
@@ -85,12 +86,53 @@ export class InterventionsService {
       }
     }
 
-    return this.prisma.intervention.update({ where: { id }, data });
+    const statusChanged = dto.status !== undefined && dto.status !== current.status;
+    const faultId = dto.linkedFaultId ?? current.linkedFaultId;
+
+    return this.prisma.$transaction(async (tx) => {
+      const updated = await tx.intervention.update({ where: { id }, data });
+      if (!statusChanged) return updated;
+
+      // The linked fault follows the work order: starting the work takes the
+      // fault in charge, completing it resolves the fault.
+      if (faultId) await this.advanceLinkedFault(tx, siteId, faultId, dto.status!);
+      await syncMachineState(tx, siteId, current.machineId);
+      return updated;
+    });
+  }
+
+  private async advanceLinkedFault(
+    tx: Prisma.TransactionClient,
+    siteId: string,
+    faultId: string,
+    status: InterventionStatus,
+  ): Promise<void> {
+    const fault = await tx.fault.findFirst({
+      where: { id: faultId, siteId },
+      select: { status: true, takenAt: true },
+    });
+    if (!fault || fault.status === FaultStatus.RESOLVED) return;
+
+    const now = new Date();
+    if (status === InterventionStatus.IN_PROGRESS && fault.status === FaultStatus.PENDING) {
+      await tx.fault.update({
+        where: { id: faultId },
+        data: { status: FaultStatus.IN_PROGRESS, takenAt: fault.takenAt ?? now },
+      });
+    } else if (status === InterventionStatus.COMPLETED) {
+      await tx.fault.update({
+        where: { id: faultId },
+        data: { status: FaultStatus.RESOLVED, resolvedAt: now, takenAt: fault.takenAt ?? now },
+      });
+    }
   }
 
   async remove(siteId: string, id: string) {
-    await this.findOne(siteId, id);
-    await this.prisma.intervention.delete({ where: { id } });
+    const intervention = await this.findOne(siteId, id);
+    await this.prisma.$transaction(async (tx) => {
+      await tx.intervention.delete({ where: { id } });
+      await syncMachineState(tx, siteId, intervention.machineId);
+    });
     return { id, deleted: true };
   }
 

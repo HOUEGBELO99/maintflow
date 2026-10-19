@@ -1,5 +1,5 @@
 import { Module } from '@nestjs/common';
-import { APP_GUARD } from '@nestjs/core';
+import { APP_FILTER, APP_GUARD } from '@nestjs/core';
 import { ConfigModule } from '@nestjs/config';
 import { ScheduleModule } from '@nestjs/schedule';
 import { LoggerModule } from 'nestjs-pino';
@@ -9,6 +9,7 @@ import { PrismaModule } from './modules/prisma/prisma.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
 import { PermissionsGuard } from './common/guards/permissions.guard';
+import { PrismaExceptionFilter } from './common/filters/prisma-exception.filter';
 import { MachinesModule } from './modules/machines/machines.module';
 import { FaultsModule } from './modules/faults/faults.module';
 import { InterventionsModule } from './modules/interventions/interventions.module';
@@ -60,6 +61,8 @@ import { HealthModule } from './modules/health/health.module';
     // Auth is ON by default everywhere; opt out per-route with @Public().
     { provide: APP_GUARD, useClass: JwtAuthGuard },
     { provide: APP_GUARD, useClass: PermissionsGuard },
+    // Known Prisma errors → 409/404/400 instead of a bare 500.
+    { provide: APP_FILTER, useClass: PrismaExceptionFilter },
   ],
 })
 export class AppModule {}
