@@ -272,7 +272,7 @@ class _Body extends StatelessWidget {
         ],
         const SizedBox(height: 24),
         Text(
-          'INTERVENTIONS · ${interventions.length}',
+          'MES INTERVENTIONS · ${interventions.length}',
           style: const TextStyle(
             fontSize: 11,
             fontWeight: FontWeight.w600,
@@ -290,7 +290,7 @@ class _Body extends StatelessWidget {
             ),
             child: const Center(
               child: Text(
-                'Aucune intervention sur cette machine.',
+                'Aucune intervention qui vous est assignée sur cette machine.',
                 style: TextStyle(fontSize: 12.5, color: AppColors.mute),
               ),
             ),

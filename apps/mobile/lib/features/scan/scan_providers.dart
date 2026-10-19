@@ -27,12 +27,28 @@ String? extractMachineCode(String raw) {
   return trimmed.toUpperCase();
 }
 
-/// Resolves a scanned payload against the cached machines (keyed by code).
-/// Returns null when the code can't be parsed or isn't in the cache.
-Machine? resolveScannedMachine(String raw, Map<String, Machine> byCode) {
+/// Indexes machines by their upper-cased code, for QR resolution.
+Map<String, Machine> indexByCode(Iterable<Machine> machines) =>
+    {for (final m in machines) m.code.trim().toUpperCase(): m};
+
+/// Resolves a scanned payload against the cached machines.
+///
+/// Tags encode the machine code (`MCH-002`). Tags printed before June 2026
+/// encoded `<web>/machines/<uuid>`, so when [byId] is given the extracted
+/// segment is also tried as a machine id — old stickers keep working.
+/// Returns null when the payload can't be parsed or matches nothing.
+Machine? resolveScannedMachine(
+  String raw,
+  Map<String, Machine> byCode, {
+  Map<String, Machine> byId = const {},
+}) {
   final code = extractMachineCode(raw);
   if (code == null) return null;
-  return byCode[code];
+  final byCodeHit = byCode[code];
+  if (byCodeHit != null) return byCodeHit;
+  final id = code.toLowerCase();
+  return byId[id] ??
+      byId.values.where((m) => m.id.toLowerCase() == id).firstOrNull;
 }
 
 /// Cached machines indexed by their (upper-cased) code, for QR resolution.
@@ -40,7 +56,7 @@ final machinesByCodeProvider =
     Provider.autoDispose<Map<String, Machine>>((ref) {
   final byId =
       ref.watch(machinesByIdProvider).valueOrNull ?? const <String, Machine>{};
-  return {for (final m in byId.values) m.code.toUpperCase(): m};
+  return indexByCode(byId.values);
 });
 
 bool _isActive(InterventionStatus s) =>

@@ -113,4 +113,26 @@ void main() {
     );
     expect(find.text("Ouvrir l'intervention"), findsNothing);
   });
+
+  testWidgets('says the parc is not synced when the cache is empty', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      _host(
+        ScanResultSheet(
+          raw: 'MCH-002',
+          machine: null,
+          catalogEmpty: true,
+          onOpenIntervention: (_) {},
+          onReportFault: (_) {},
+          onDismiss: () {},
+        ),
+        const [],
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Parc non synchronisé'), findsOneWidget);
+    expect(find.text('Machine introuvable'), findsNothing);
+  });
 }
