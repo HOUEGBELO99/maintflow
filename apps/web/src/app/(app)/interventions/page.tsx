@@ -5,6 +5,7 @@ import { useEffect, useState } from 'react';
 
 import { Icon } from '@/components/icon';
 import { ConfirmDialog, Field, inputClass, Modal } from '@/components/ui/modal';
+import { calendarCells, calendarTitle, todayISO, toISO } from '@/lib/dates';
 import { api, type InterventionInput, type InterventionUpdate, type SiteUser } from '@/lib/api-client';
 import type {
   ChecklistItem,
@@ -14,9 +15,6 @@ import type {
   InterventionStatus,
   Machine,
 } from '@maintflow/shared';
-
-/** Reference "today" of the seeded scenario — mirrors the planning calendar. */
-const SCENARIO_TODAY = '2026-05-21';
 
 const KIND_LABEL: Record<string, string> = { corrective: 'Corrective', preventive: 'Préventive' };
 const KIND_PILL: Record<string, string> = {
@@ -56,7 +54,6 @@ const FILTERS: { key: FilterKey; label: string }[] = [
 
 const fmtDate = (iso: string) =>
   new Date(iso).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' });
-const toISO = (d: Date) => d.toISOString().slice(0, 10);
 
 export default function InterventionsPage() {
   const qc = useQueryClient();
@@ -142,12 +139,12 @@ export default function InterventionsPage() {
       </div>
 
       {view === 'list' ? (
-        <div className="overflow-hidden rounded-lg border border-line bg-surface">
+        <div className="overflow-x-auto rounded-lg border border-line bg-surface">
           <table className="w-full border-collapse text-[13px]">
             <thead>
               <tr className="bg-surface-soft text-[11px] uppercase tracking-[0.06em] text-mute">
                 {['Réf.', 'Machine', 'Technicien', 'Type', 'Description', 'Date', 'Durée', 'Statut', ''].map((h, i) => (
-                  <th key={i} className="border-b border-line px-4 py-2.5 text-left font-semibold">
+                  <th key={i} className="whitespace-nowrap border-b border-line px-4 py-2.5 text-left font-semibold">
                     {h}
                   </th>
                 ))}
@@ -162,12 +159,12 @@ export default function InterventionsPage() {
                     onClick={() => setSheetFor(it.id)}
                     className="cursor-pointer border-b border-line last:border-0 hover:bg-surface-soft"
                   >
-                    <td className="px-4 py-3 font-mono text-mute">I-{it.id.slice(-4).toUpperCase()}</td>
-                    <td className="px-4 py-3">
+                    <td className="whitespace-nowrap px-4 py-3 font-mono text-mute">I-{it.id.slice(-4).toUpperCase()}</td>
+                    <td className="min-w-[170px] px-4 py-3">
                       <div className="font-semibold">{m?.name ?? it.machineId}</div>
                       <div className="text-[11.5px] text-mute">{m?.workshop}</div>
                     </td>
-                    <td className="px-4 py-3">{techName(it.technicianId)}</td>
+                    <td className="whitespace-nowrap px-4 py-3">{techName(it.technicianId)}</td>
                     <td className="px-4 py-3">
                       <span className={`inline-flex rounded-pill border px-[9px] py-[3px] text-[11.5px] font-semibold ${KIND_PILL[it.kind]}`}>
                         {KIND_LABEL[it.kind]}
@@ -176,8 +173,15 @@ export default function InterventionsPage() {
                     <td className="max-w-[260px] px-4 py-3">
                       <div className="truncate">{it.description}</div>
                     </td>
-                    <td className="px-4 py-3 text-mute">{fmtDate(it.scheduledFor)}</td>
-                    <td className="px-4 py-3 text-mute">Prévu {it.duration} h</td>
+                    <td className="whitespace-nowrap px-4 py-3 text-mute">
+                      {fmtDate(it.scheduledFor)}
+                      {it.status === 'planned' && it.scheduledFor.slice(0, 10) < todayISO() && (
+                        <span className="ml-1.5 rounded-pill bg-critBg px-1.5 py-px text-[10px] font-bold uppercase text-critFg">
+                          En retard
+                        </span>
+                      )}
+                    </td>
+                    <td className="whitespace-nowrap px-4 py-3 text-mute">Prévu {it.duration} h</td>
                     <td className="px-4 py-3">
                       <select
                         value={it.status}
@@ -192,7 +196,7 @@ export default function InterventionsPage() {
                         ))}
                       </select>
                     </td>
-                    <td className="px-4 py-3 text-right">
+                    <td className="whitespace-nowrap px-4 py-3 text-right">
                       <button
                         onClick={(e) => { e.stopPropagation(); setSheetFor(it.id); }}
                         title="Bon de travail"
@@ -283,7 +287,7 @@ function InterventionForm({
   const [step, setStep] = useState<1 | 2>(1);
   const [form, setForm] = useState<InterventionInput>({
     machineId: '', technicianId: '', kind: 'corrective', description: '',
-    scheduledFor: SCENARIO_TODAY, duration: 2,
+    scheduledFor: todayISO(), duration: 2,
   });
 
   useEffect(() => {
@@ -294,7 +298,7 @@ function InterventionForm({
         technicianId: users[0]?.id ?? '',
         kind: 'corrective',
         description: '',
-        scheduledFor: SCENARIO_TODAY,
+        scheduledFor: todayISO(),
         duration: 2,
       });
     }
@@ -767,20 +771,44 @@ function InterventionsCalendar({
   criticalFaultIds: Set<string>;
   onPick: (id: string) => void;
 }) {
-  const today = new Date(`${SCENARIO_TODAY}T00:00:00Z`);
-  const monOffset = (today.getUTCDay() + 6) % 7;
-  const monStart = new Date(today);
-  monStart.setUTCDate(today.getUTCDate() - monOffset - 7);
-  const cells = Array.from({ length: 35 }, (_, i) => {
-    const d = new Date(monStart);
-    d.setUTCDate(monStart.getUTCDate() + i);
-    return d;
-  });
+  const today = todayISO();
+  const [weekOffset, setWeekOffset] = useState(0);
+  const cells = calendarCells(today, weekOffset);
+  const focusMonth = (cells[17] ?? cells[0] ?? new Date()).getUTCMonth();
   const weekdays = ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'];
   const eventsOn = (d: Date) => interventions.filter((i) => i.scheduledFor.slice(0, 10) === toISO(d));
 
   return (
     <div className="rounded-lg border border-line bg-surface px-5 py-[18px]">
+      <div className="mb-3 flex items-center justify-between">
+        <div className="text-[13px] font-semibold capitalize text-ink">{calendarTitle(cells)}</div>
+        <div className="flex items-center gap-1">
+          <button
+            type="button"
+            onClick={() => setWeekOffset((w) => w - 4)}
+            aria-label="Période précédente"
+            className="rounded-md border border-line px-2 py-1 text-[12px] font-semibold text-body hover:bg-surface-soft"
+          >
+            ‹
+          </button>
+          <button
+            type="button"
+            onClick={() => setWeekOffset(0)}
+            disabled={weekOffset === 0}
+            className="rounded-md border border-line px-2.5 py-1 text-[12px] font-semibold text-body hover:bg-surface-soft disabled:opacity-50"
+          >
+            Aujourd’hui
+          </button>
+          <button
+            type="button"
+            onClick={() => setWeekOffset((w) => w + 4)}
+            aria-label="Période suivante"
+            className="rounded-md border border-line px-2 py-1 text-[12px] font-semibold text-body hover:bg-surface-soft"
+          >
+            ›
+          </button>
+        </div>
+      </div>
       <div className="mb-1.5 grid grid-cols-7 gap-1">
         {weekdays.map((w) => (
           <div key={w} className="px-1.5 py-1 text-[11px] font-semibold uppercase tracking-[0.06em] text-mute">
@@ -790,8 +818,8 @@ function InterventionsCalendar({
       </div>
       <div className="grid grid-cols-7 gap-1">
         {cells.map((d, i) => {
-          const isToday = toISO(d) === SCENARIO_TODAY;
-          const dim = d.getUTCMonth() !== today.getUTCMonth();
+          const isToday = toISO(d) === today;
+          const dim = d.getUTCMonth() !== focusMonth;
           return (
             <div
               key={i}

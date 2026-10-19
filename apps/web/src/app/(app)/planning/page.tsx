@@ -6,18 +6,13 @@ import { useEffect, useMemo, useState } from 'react';
 
 import { Icon } from '@/components/icon';
 import { ConfirmDialog, Field, inputClass, Modal } from '@/components/ui/modal';
+import { addDaysISO, calendarCells, calendarTitle, daysUntil, todayISO, toISO } from '@/lib/dates';
 import { api, type PlanRuleInput } from '@/lib/api-client';
 import type { Intervention, Machine, PlanRule, Technician } from '@maintflow/shared';
-
-/** Reference "today" of the seeded scenario — mirrors the API scenario clock. */
-const SCENARIO_TODAY = '2026-05-21';
 
 const fmtDate = (iso: string) =>
   new Date(iso).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' });
 
-const toISO = (d: Date) => d.toISOString().slice(0, 10);
-const daysUntil = (iso: string) =>
-  Math.round((Date.parse(`${iso.slice(0, 10)}T00:00:00Z`) - Date.parse(`${SCENARIO_TODAY}T00:00:00Z`)) / 86_400_000);
 
 export default function PlanningPage() {
   const qc = useQueryClient();
@@ -276,20 +271,44 @@ function PlanningCalendar({
   criticalFaultIds: Set<string>;
   onPick: (machineId: string) => void;
 }) {
-  const today = new Date(`${SCENARIO_TODAY}T00:00:00Z`);
-  const monOffset = (today.getUTCDay() + 6) % 7;
-  const monStart = new Date(today);
-  monStart.setUTCDate(today.getUTCDate() - monOffset - 7);
-  const cells = Array.from({ length: 35 }, (_, i) => {
-    const d = new Date(monStart);
-    d.setUTCDate(monStart.getUTCDate() + i);
-    return d;
-  });
+  const today = todayISO();
+  const [weekOffset, setWeekOffset] = useState(0);
+  const cells = calendarCells(today, weekOffset);
+  const focusMonth = (cells[17] ?? cells[0] ?? new Date()).getUTCMonth();
   const weekdays = ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'];
   const eventsOn = (d: Date) => interventions.filter((i) => i.scheduledFor.slice(0, 10) === toISO(d));
 
   return (
     <div className="rounded-lg border border-line bg-surface px-5 py-[18px]">
+      <div className="mb-3 flex items-center justify-between">
+        <div className="text-[13px] font-semibold capitalize text-ink">{calendarTitle(cells)}</div>
+        <div className="flex items-center gap-1">
+          <button
+            type="button"
+            onClick={() => setWeekOffset((w) => w - 4)}
+            aria-label="Période précédente"
+            className="rounded-md border border-line px-2 py-1 text-[12px] font-semibold text-body hover:bg-surface-soft"
+          >
+            ‹
+          </button>
+          <button
+            type="button"
+            onClick={() => setWeekOffset(0)}
+            disabled={weekOffset === 0}
+            className="rounded-md border border-line px-2.5 py-1 text-[12px] font-semibold text-body hover:bg-surface-soft disabled:opacity-50"
+          >
+            Aujourd’hui
+          </button>
+          <button
+            type="button"
+            onClick={() => setWeekOffset((w) => w + 4)}
+            aria-label="Période suivante"
+            className="rounded-md border border-line px-2 py-1 text-[12px] font-semibold text-body hover:bg-surface-soft"
+          >
+            ›
+          </button>
+        </div>
+      </div>
       <div className="mb-1.5 grid grid-cols-7 gap-1">
         {weekdays.map((w) => (
           <div key={w} className="px-1.5 py-1 text-[11px] font-semibold uppercase tracking-[0.06em] text-mute">
@@ -299,8 +318,8 @@ function PlanningCalendar({
       </div>
       <div className="grid grid-cols-7 gap-1">
         {cells.map((d, i) => {
-          const isToday = toISO(d) === SCENARIO_TODAY;
-          const dim = d.getUTCMonth() !== today.getUTCMonth();
+          const isToday = toISO(d) === today;
+          const dim = d.getUTCMonth() !== focusMonth;
           return (
             <div
               key={i}
@@ -353,7 +372,7 @@ function PlanRuleForm({
   onSave: (body: PlanRuleInput) => void;
 }) {
   const [form, setForm] = useState<PlanRuleInput>({
-    title: '', machineId: '', technicianId: '', everyWeeks: 4, duration: 2, reminderLead: 2, nextDue: '2026-05-28',
+    title: '', machineId: '', technicianId: '', everyWeeks: 4, duration: 2, reminderLead: 2, nextDue: addDaysISO(todayISO(), 7),
   });
   useEffect(() => {
     if (open) {
@@ -364,7 +383,7 @@ function PlanRuleForm({
         everyWeeks: 4,
         duration: 2,
         reminderLead: 2,
-        nextDue: '2026-05-28',
+        nextDue: addDaysISO(todayISO(), 7),
       });
     }
   }, [open, machines, technicians]);

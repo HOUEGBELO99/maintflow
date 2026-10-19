@@ -41,14 +41,19 @@ describe('PlanningService', () => {
     );
   });
 
-  it('computes upcoming reminders for active rules, anchored to the scenario date', async () => {
-    // Scenario "today" is 2026-05-21; PM-01 is due 2026-05-23 with a 2-day lead.
-    prisma.planRule.findMany.mockResolvedValue([
-      { id: 'r1', code: 'PM-01', nextDue: new Date('2026-05-23T00:00:00.000Z'), reminderLead: 2, active: true },
-    ]);
-    const [u] = await service.upcoming('site-1');
-    expect(prisma.planRule.findMany).toHaveBeenCalledWith({ where: { siteId: 'site-1', active: true } });
-    expect(u).toMatchObject({ remindOn: '2026-05-21', dueIn: 2, remindIn: 0 });
+  it('computes upcoming reminders for active rules against today', async () => {
+    // Today is 2026-05-21 (fake clock); PM-01 is due 2026-05-23 with a 2-day lead.
+    jest.useFakeTimers({ now: new Date('2026-05-21T09:30:00.000Z') });
+    try {
+      prisma.planRule.findMany.mockResolvedValue([
+        { id: 'r1', code: 'PM-01', nextDue: new Date('2026-05-23T00:00:00.000Z'), reminderLead: 2, active: true },
+      ]);
+      const [u] = await service.upcoming('site-1');
+      expect(prisma.planRule.findMany).toHaveBeenCalledWith({ where: { siteId: 'site-1', active: true } });
+      expect(u).toMatchObject({ remindOn: '2026-05-21', dueIn: 2, remindIn: 0 });
+    } finally {
+      jest.useRealTimers();
+    }
   });
 
   it('advances the due date by the recurrence when scheduling now', async () => {
