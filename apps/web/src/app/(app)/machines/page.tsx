@@ -145,6 +145,16 @@ export default function MachinesPage() {
           />
         </div>
         <button
+          onClick={() =>
+            window.open(`/print/labels?ids=${filtered.map((m) => m.id).join(',')}`, '_blank', 'noopener')
+          }
+          disabled={filtered.length === 0}
+          title="Imprimer les étiquettes QR des machines affichées"
+          className="inline-flex items-center gap-2 rounded-md border border-line bg-surface px-3.5 py-2 text-[13px] font-semibold text-body transition hover:bg-surface-muted disabled:opacity-50"
+        >
+          <Icon name="download" size={14} /> Étiquettes QR
+        </button>
+        <button
           onClick={() => setAdding(true)}
           className="inline-flex items-center gap-2 rounded-md border border-brand bg-brand-bright px-3.5 py-2 text-[13px] font-bold text-brand-deep transition hover:bg-brand"
         >
@@ -153,7 +163,7 @@ export default function MachinesPage() {
       </div>
 
       {/* Table */}
-      <div className="overflow-hidden rounded-lg border border-line bg-surface">
+      <div className="overflow-x-auto rounded-lg border border-line bg-surface">
         <table className="w-full border-collapse text-[13px]">
           <thead>
             <tr className="bg-surface-soft text-[11px] uppercase tracking-[0.06em] text-mute">

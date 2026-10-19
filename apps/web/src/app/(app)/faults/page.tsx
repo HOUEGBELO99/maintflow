@@ -139,12 +139,12 @@ export default function FaultsPage() {
         </button>
       </div>
 
-      <div className="overflow-hidden rounded-lg border border-line bg-surface">
+      <div className="overflow-x-auto rounded-lg border border-line bg-surface">
         <table className="w-full border-collapse text-[13px]">
           <thead>
             <tr className="bg-surface-soft text-[11px] uppercase tracking-[0.06em] text-mute">
               {['Réf.', 'Machine', 'Type', 'Description', 'Gravité', 'Immobilisation', 'Signalée', 'Statut', ''].map((h, i) => (
-                <th key={i} className="border-b border-line px-4 py-2.5 text-left font-semibold">
+                <th key={i} className="whitespace-nowrap border-b border-line px-4 py-2.5 text-left font-semibold">
                   {h}
                 </th>
               ))}
@@ -155,8 +155,8 @@ export default function FaultsPage() {
               const m = machine(f.machineId);
               return (
                 <tr key={f.id} className="border-b border-line last:border-0 hover:bg-surface-soft">
-                  <td className="px-4 py-3 font-mono text-mute">F-{f.id.slice(-4).toUpperCase()}</td>
-                  <td className="px-4 py-3">
+                  <td className="whitespace-nowrap px-4 py-3 font-mono text-mute">F-{f.id.slice(-4).toUpperCase()}</td>
+                  <td className="min-w-[170px] px-4 py-3">
                     <div className="font-semibold">{m?.name ?? f.machineId}</div>
                     <div className="text-[11.5px] text-mute">{m?.workshop}</div>
                   </td>
@@ -181,10 +181,10 @@ export default function FaultsPage() {
                       )}
                     </div>
                   </td>
-                  <td className="px-4 py-3">
+                  <td className="whitespace-nowrap px-4 py-3">
                     {f.status !== 'resolved' ? <FaultChrono from={f.reportedAt} /> : <span className="text-mute">—</span>}
                   </td>
-                  <td className="px-4 py-3 text-[12px] text-mute">{fmtDateTime(f.reportedAt)}</td>
+                  <td className="whitespace-nowrap px-4 py-3 text-[12px] text-mute">{fmtDateTime(f.reportedAt)}</td>
                   <td className="px-4 py-3">
                     <select
                       value={f.status}
@@ -198,7 +198,7 @@ export default function FaultsPage() {
                       ))}
                     </select>
                   </td>
-                  <td className="px-4 py-3 text-right">
+                  <td className="whitespace-nowrap px-4 py-3 text-right">
                     {f.hasPhoto && (
                       <button
                         onClick={() => setPhotosFor(f)}

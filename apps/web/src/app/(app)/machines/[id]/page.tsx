@@ -6,6 +6,7 @@ import { useParams, useRouter } from 'next/navigation';
 import { QRCodeSVG } from 'qrcode.react';
 import { useState } from 'react';
 
+import { machineQrPayload, QR_PRINT_OPTIONS } from '@/lib/qr';
 import { Icon } from '@/components/icon';
 import { api } from '@/lib/api-client';
 import type { Fault, Intervention } from '@maintflow/shared';
@@ -83,7 +84,7 @@ export default function MachineDetailPage() {
 
   // Encode the machine CODE (e.g. "MCH-001"), not the URL/UUID: the mobile
   // scanner resolves a scanned payload against its machine cache by code.
-  const qrValue = machine.code;
+  const qrValue = machineQrPayload(machine);
 
   const tabs: { key: Tab; label: string; count?: number }[] = [
     { key: 'info', label: 'Informations' },
@@ -137,10 +138,10 @@ export default function MachineDetailPage() {
               </div>
             </div>
 
-            {/* Equipment QR — encodes the machine URL, resolvable by the mobile scanner. */}
+            {/* Equipment QR — encodes the machine code, resolved by the mobile scanner. */}
             <div className="mt-5 flex gap-4">
-              <div className="flex flex-col items-center rounded-lg border border-line p-3">
-                <QRCodeSVG value={qrValue} size={108} bgColor="transparent" fgColor="#0E1410" />
+              <div className="flex flex-col items-center rounded-lg border border-line bg-white p-2">
+                <QRCodeSVG value={qrValue} size={124} {...QR_PRINT_OPTIONS} title={`QR ${machine.code}`} />
                 <div className="mt-2 font-mono text-[11px] text-mute">{machine.code}</div>
               </div>
               <div className="flex-1">
@@ -149,7 +150,7 @@ export default function MachineDetailPage() {
                   Scannez pour ouvrir sur mobile. Permet à un technicien d’ouvrir la fiche, déclarer une panne ou enregistrer une intervention depuis l’atelier.
                 </p>
                 <button
-                  onClick={() => window.print()}
+                  onClick={() => window.open(`/print/labels?ids=${machine.id}`, '_blank', 'noopener')}
                   className="mt-2.5 inline-flex items-center gap-2 rounded-md bg-surface-muted px-3 py-1.5 text-[12px] font-semibold text-body hover:bg-surface-soft"
                 >
                   <Icon name="download" size={13} /> Imprimer étiquette
