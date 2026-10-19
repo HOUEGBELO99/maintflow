@@ -7,6 +7,9 @@
 
 generator client {
   provider = "prisma-client-js"
+  // Load `include`d relations with SQL joins in one query instead of one
+  // extra round-trip per relation (the API and Supabase are far apart).
+  previewFeatures = ["relationJoins"]
 }
 
 datasource db {

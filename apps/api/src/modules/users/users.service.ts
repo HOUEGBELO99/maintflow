@@ -4,6 +4,7 @@ import type { Invitation } from '@maintflow/shared';
 import { PrismaService } from '../prisma/prisma.service';
 import type { CreateInvitationDto } from './dto/create-invitation.dto';
 import type { UpdateUserDto } from './dto/update-user.dto';
+import { AuthProfileCache } from '../../common/auth/auth-profile.cache';
 import { SupabaseAuthAdminService } from './supabase-auth-admin.service';
 
 /** Public projection of a User row for assignment/admin UIs (no auth internals). */
@@ -56,6 +57,7 @@ export class UsersService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly authAdmin: SupabaseAuthAdminService,
+    private readonly profiles: AuthProfileCache,
   ) {}
 
   /** Team members, oldest first (matches the seeded/prototype ordering). */
@@ -70,7 +72,7 @@ export class UsersService {
   async update(siteId: string, id: string, dto: UpdateUserDto) {
     const user = await this.prisma.user.findFirst({ where: { id, siteId }, select: { id: true } });
     if (!user) throw new NotFoundException(`User ${id} not found`);
-    return this.prisma.user.update({
+    const updated = await this.prisma.user.update({
       where: { id },
       data: {
         ...(dto.role !== undefined ? { role: dto.role } : {}),
@@ -78,6 +80,9 @@ export class UsersService {
       },
       select: USER_SELECT,
     });
+    // Apply the new role/status on the user's very next request.
+    this.profiles.invalidate(id);
+    return updated;
   }
 
   async listInvitations(siteId: string): Promise<Invitation[]> {

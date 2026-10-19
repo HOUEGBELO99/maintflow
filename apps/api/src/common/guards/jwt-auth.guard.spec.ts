@@ -3,6 +3,7 @@ import { Reflector } from '@nestjs/core';
 
 import { PrismaService } from '../../modules/prisma/prisma.service';
 import { SupabaseTokenVerifier } from '../auth/supabase-token.verifier';
+import { AuthProfileCache } from '../auth/auth-profile.cache';
 import { JwtAuthGuard } from './jwt-auth.guard';
 
 /**
@@ -41,7 +42,8 @@ describe('JwtAuthGuard', () => {
     guard = new JwtAuthGuard(
       reflector as unknown as Reflector,
       tokens as unknown as SupabaseTokenVerifier,
-      prisma as unknown as PrismaService,
+      // A fresh (empty) cache per test, backed by the mocked Prisma.
+      new AuthProfileCache(prisma as unknown as PrismaService),
     );
   });
 

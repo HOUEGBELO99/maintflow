@@ -9,8 +9,8 @@ import { Reflector } from '@nestjs/core';
 import type { UserRole } from '@maintflow/shared';
 import { IS_PUBLIC_KEY } from '../decorators/public.decorator';
 import type { AuthenticatedRequest } from '../decorators/current-user.decorator';
-import { PrismaService } from '../../modules/prisma/prisma.service';
 import { SupabaseTokenVerifier } from '../auth/supabase-token.verifier';
+import { AuthProfileCache } from '../auth/auth-profile.cache';
 
 /**
  * Verifies the Supabase-issued access token (asymmetric signing keys via JWKS,
@@ -23,7 +23,7 @@ export class JwtAuthGuard implements CanActivate {
   constructor(
     private readonly reflector: Reflector,
     private readonly tokens: SupabaseTokenVerifier,
-    private readonly prisma: PrismaService,
+    private readonly profiles: AuthProfileCache,
   ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
@@ -39,10 +39,8 @@ export class JwtAuthGuard implements CanActivate {
 
     const payload = await this.tokens.verify(token);
 
-    const profile = await this.prisma.user.findUnique({
-      where: { id: payload.sub },
-      select: { id: true, email: true, role: true, siteId: true, status: true },
-    });
+    // Cached briefly: saves a database round-trip on every request.
+    const profile = await this.profiles.get(payload.sub);
     if (!profile || profile.status !== 'active') {
       throw new UnauthorizedException('User not found or inactive');
     }
