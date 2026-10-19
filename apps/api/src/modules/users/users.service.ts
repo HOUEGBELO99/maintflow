@@ -80,6 +80,7 @@ export class UsersService {
       },
       select: USER_SELECT,
     });
+    if (dto.role === 'technicien') await this.ensureTechnicianProfile(id);
     // Apply the new role/status on the user's very next request.
     this.profiles.invalidate(id);
     return updated;
@@ -146,6 +147,9 @@ export class UsersService {
         initials: initialsFrom(name),
       },
     });
+    // Technicians also need their field profile (availability, specialties)
+    // to show up on the Techniciens page and be assignable.
+    if (dto.role === 'technicien') await this.ensureTechnicianProfile(authUser.id);
 
     // 3. Record the invitation (admin "Invitations" tab).
     const invitation = await this.prisma.invitation.create({
@@ -153,6 +157,41 @@ export class UsersService {
       include: { invitedBy: { select: { name: true } } },
     });
     return this.toInvitationDto(invitation);
+  }
+
+  /** Re-send the setup email of a pending invitation (e.g. a lost or broken link). */
+  async resendInvitation(siteId: string, id: string): Promise<Invitation & { sent: 'invite' | 'recovery' }> {
+    const invitation = await this.prisma.invitation.findFirst({ where: { id, siteId } });
+    if (!invitation) throw new NotFoundException(`Invitation ${id} not found`);
+    if (invitation.status !== 'pending') {
+      throw new ConflictException('This invitation is no longer pending');
+    }
+
+    let sent: 'invite' | 'recovery';
+    try {
+      sent = await this.authAdmin.resendInvite(invitation.email);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      throw new BadRequestException(
+        `Could not send the invitation email to ${invitation.email}: ${message}. ` +
+          `Check the Supabase project's SMTP settings and allowed redirect URLs.`,
+      );
+    }
+
+    const updated = await this.prisma.invitation.update({
+      where: { id },
+      data: { sentAt: new Date() },
+      include: { invitedBy: { select: { name: true } } },
+    });
+    return { ...this.toInvitationDto(updated), sent };
+  }
+
+  private async ensureTechnicianProfile(userId: string): Promise<void> {
+    await this.prisma.technician.upsert({
+      where: { userId },
+      update: {},
+      create: { userId },
+    });
   }
 
   private toInvitationDto(i: {

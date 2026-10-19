@@ -7,6 +7,7 @@ import { Icon } from '@/components/icon';
 import { ConfirmDialog, Field, inputClass, Modal } from '@/components/ui/modal';
 import { api, type InvitationInput, type SiteUser } from '@/lib/api-client';
 import { PERMISSION_MATRIX, Permission, roleHasPermission, type UserRole } from '@maintflow/shared';
+import { useToasts } from '@/lib/store/toasts';
 import { useCan } from '@/lib/permissions';
 
 const ROLES: UserRole[] = ['admin', 'chef_maintenance', 'chef_atelier', 'technicien', 'operateur'];
@@ -74,6 +75,13 @@ export default function UsersPage() {
     mutationFn: (v: { id: string; role?: UserRole; status?: 'active' | 'inactive' }) =>
       api.users.update(v.id, { role: v.role, status: v.status }),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['users'] }),
+  });
+  const resendInvite = useMutation({
+    mutationFn: (id: string) => api.users.invitations.resend(id),
+    onSuccess: (inv) => {
+      void qc.invalidateQueries({ queryKey: ['invitations'] });
+      useToasts.getState().push('success', `Invitation renvoyée à ${inv.email}.`);
+    },
   });
   const createInvite = useMutation({
     mutationFn: api.users.invitations.create,
@@ -222,7 +230,15 @@ export default function UsersPage() {
                 )}
               </td>
               <td className="px-4 py-3 text-right">
-                {/* Resending is not supported by the API yet — no dead button. */}
+                {inv.status === 'pending' && (
+                  <button
+                    onClick={() => resendInvite.mutate(inv.id)}
+                    disabled={resendInvite.isPending}
+                    className="inline-flex items-center gap-1.5 rounded-md px-2.5 py-[5px] text-xs font-semibold text-mute transition hover:bg-surface-muted disabled:opacity-50"
+                  >
+                    <Icon name="refresh" size={12} /> Renvoyer
+                  </button>
+                )}
               </td>
             </tr>
           ))}

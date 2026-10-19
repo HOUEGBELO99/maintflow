@@ -226,6 +226,8 @@ export const api = {
       list: () => request<Invitation[]>('/users/invitations'),
       create: (body: InvitationInput) =>
         request<Invitation>('/users/invitations', { method: 'POST', body: JSON.stringify(body) }),
+      resend: (id: string) =>
+        request<Invitation & { sent: 'invite' | 'recovery' }>(`/users/invitations/${id}/resend`, { method: 'POST' }),
     },
   },
 };

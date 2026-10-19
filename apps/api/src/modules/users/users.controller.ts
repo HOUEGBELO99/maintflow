@@ -32,6 +32,12 @@ export class UsersController {
     return this.users.createInvitation(user.siteId, user.id, dto);
   }
 
+  @Post('invitations/:id/resend')
+  @RequirePermission(Permission.MANAGE_USERS)
+  resendInvitation(@CurrentUser() user: AuthUser, @Param('id', ParseUUIDPipe) id: string) {
+    return this.users.resendInvitation(user.siteId, id);
+  }
+
   @Patch(':id')
   @RequirePermission(Permission.MANAGE_USERS)
   update(
