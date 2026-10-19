@@ -15,6 +15,8 @@ import type {
   InterventionStatus,
   Machine,
 } from '@maintflow/shared';
+import { Permission } from '@maintflow/shared';
+import { useCan } from '@/lib/permissions';
 
 const KIND_LABEL: Record<string, string> = { corrective: 'Corrective', preventive: 'Préventive' };
 const KIND_PILL: Record<string, string> = {
@@ -56,6 +58,7 @@ const fmtDate = (iso: string) =>
   new Date(iso).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' });
 
 export default function InterventionsPage() {
+  const can = useCan();
   const qc = useQueryClient();
   const { data: items } = useQuery({ queryKey: ['interventions'], queryFn: () => api.interventions.list() });
   const { data: machines } = useQuery({ queryKey: ['machines'], queryFn: () => api.machines.list() });
@@ -130,12 +133,14 @@ export default function InterventionsPage() {
             </button>
           ))}
         </div>
-        <button
-          onClick={() => setAdding(true)}
-          className="inline-flex items-center gap-2 rounded-md border border-brand bg-brand-bright px-3.5 py-2 text-[13px] font-bold text-brand-deep transition hover:bg-brand"
-        >
-          <Icon name="plus" size={14} /> Planifier une intervention
-        </button>
+        {can(Permission.PLAN_INTERVENTIONS) && (
+          <button
+            onClick={() => setAdding(true)}
+            className="inline-flex items-center gap-2 rounded-md border border-brand bg-brand-bright px-3.5 py-2 text-[13px] font-bold text-brand-deep transition hover:bg-brand"
+          >
+            <Icon name="plus" size={14} /> Planifier une intervention
+          </button>
+        )}
       </div>
 
       {view === 'list' ? (
@@ -187,7 +192,9 @@ export default function InterventionsPage() {
                         value={it.status}
                         onClick={(e) => e.stopPropagation()}
                         onChange={(e) => patchI.mutate({ id: it.id, body: { status: e.target.value as InterventionStatus } })}
-                        className="cursor-pointer rounded-pill border border-line bg-surface-muted px-2.5 py-1 text-[11.5px] font-semibold text-body"
+                        disabled={!can(Permission.MANAGE_INTERVENTIONS)}
+                        aria-label="Statut de l'intervention"
+                        className="cursor-pointer rounded-pill disabled:cursor-default disabled:opacity-80 border border-line bg-surface-muted px-2.5 py-1 text-[11.5px] font-semibold text-body"
                       >
                         {(['planned', 'in_progress', 'completed', 'cancelled'] as const).map((s) => (
                           <option key={s} value={s}>
@@ -204,13 +211,15 @@ export default function InterventionsPage() {
                       >
                         <Icon name="file" size={14} />
                       </button>
-                      <button
-                        onClick={(e) => { e.stopPropagation(); setConfirmDel(it); }}
-                        title="Supprimer"
-                        className="inline-flex h-8 w-8 items-center justify-center rounded-md text-mute hover:bg-critBg hover:text-critFg"
-                      >
-                        <Icon name="trash" size={14} />
-                      </button>
+                      {can(Permission.PLAN_INTERVENTIONS) && (
+                        <button
+                          onClick={(e) => { e.stopPropagation(); setConfirmDel(it); }}
+                          title="Supprimer"
+                          className="inline-flex h-8 w-8 items-center justify-center rounded-md text-mute hover:bg-critBg hover:text-critFg"
+                        >
+                          <Icon name="trash" size={14} />
+                        </button>
+                      )}
                     </td>
                   </tr>
                 );
@@ -252,6 +261,7 @@ export default function InterventionsPage() {
         machine={sheetItem ? machine(sheetItem.machineId) : undefined}
         users={users ?? []}
         saving={patchI.isPending}
+        readOnly={!can(Permission.PLAN_INTERVENTIONS)}
         onClose={() => setSheetFor(null)}
         onSave={(body) => sheetItem && patchI.mutate({ id: sheetItem.id, body })}
       />
@@ -494,6 +504,7 @@ function InterventionSheet({
   machine,
   users,
   saving,
+  readOnly = false,
   onClose,
   onSave,
 }: {
@@ -501,6 +512,8 @@ function InterventionSheet({
   machine: Machine | undefined;
   users: SiteUser[];
   saving: boolean;
+  /** Supervisors (chef d'atelier) consult work orders without editing them. */
+  readOnly?: boolean;
   onClose: () => void;
   onSave: (body: InterventionUpdate) => void;
 }) {
@@ -525,6 +538,7 @@ function InterventionSheet({
 
   if (!item) return null;
   const isClosed = item.status === 'completed';
+  const locked = isClosed || readOnly;
   const doneCount = checklist.filter((c) => c.done).length;
   const allDone = checklist.length > 0 && doneCount === checklist.length;
   const signed = !!draft.signedBy;
@@ -554,14 +568,16 @@ function InterventionSheet({
           <button onClick={onClose} className="rounded-md bg-surface-muted px-3.5 py-2 text-sm font-semibold text-body">
             Fermer
           </button>
-          <button
-            onClick={() => persist()}
-            disabled={saving}
-            className="inline-flex items-center gap-2 rounded-md border border-line bg-surface px-3.5 py-2 text-sm font-semibold text-body disabled:opacity-50"
-          >
-            <Icon name="check" size={14} /> Enregistrer
-          </button>
-          {!isClosed && (
+          {!readOnly && (
+            <button
+              onClick={() => persist()}
+              disabled={saving}
+              className="inline-flex items-center gap-2 rounded-md border border-line bg-surface px-3.5 py-2 text-sm font-semibold text-body disabled:opacity-50"
+            >
+              <Icon name="check" size={14} /> Enregistrer
+            </button>
+          )}
+          {!locked && (
             <button
               onClick={closeWork}
               disabled={!allDone || !signed || saving}
@@ -596,7 +612,7 @@ function InterventionSheet({
             <select
               className={inputClass}
               value={draft.technicianId}
-              disabled={isClosed}
+              disabled={locked}
               onChange={(e) => setDraft((d) => ({ ...d, technicianId: e.target.value }))}
             >
               {users.map((u) => (
@@ -624,7 +640,7 @@ function InterventionSheet({
               type="date"
               className={inputClass}
               value={draft.scheduledFor}
-              disabled={isClosed}
+              disabled={locked}
               onChange={(e) => setDraft((d) => ({ ...d, scheduledFor: e.target.value }))}
             />
           </Field>
@@ -635,7 +651,7 @@ function InterventionSheet({
               step={0.5}
               className={inputClass}
               value={draft.duration}
-              disabled={isClosed}
+              disabled={locked}
               onChange={(e) => setDraft((d) => ({ ...d, duration: Number(e.target.value) }))}
             />
           </Field>
@@ -644,7 +660,7 @@ function InterventionSheet({
           <textarea
             className={`${inputClass} min-h-[70px] resize-y`}
             value={draft.description}
-            disabled={isClosed}
+            disabled={locked}
             onChange={(e) => setDraft((d) => ({ ...d, description: e.target.value }))}
           />
         </Field>
@@ -661,8 +677,8 @@ function InterventionSheet({
             {checklist.map((c, idx) => (
               <button
                 key={idx}
-                onClick={() => !isClosed && toggle(idx)}
-                disabled={isClosed}
+                onClick={() => !locked && toggle(idx)}
+                disabled={locked}
                 className="flex items-center gap-2.5 rounded-md border border-line bg-surface px-3 py-2 text-left hover:bg-surface-soft disabled:cursor-default"
               >
                 <span
@@ -700,7 +716,7 @@ function InterventionSheet({
                 placeholder="—"
                 className={`${inputClass} w-[100px]`}
                 value={draft.actualDuration ?? ''}
-                disabled={isClosed}
+                disabled={locked}
                 onChange={(e) =>
                   setDraft((d) => ({ ...d, actualDuration: e.target.value === '' ? undefined : Number(e.target.value) }))
                 }
@@ -725,7 +741,7 @@ function InterventionSheet({
                 <span className="text-[12.5px] text-faint">Non signé</span>
               )}
             </div>
-            {!signed && !isClosed && (
+            {!signed && !locked && (
               <button
                 onClick={() => setDraft((d) => ({ ...d, signedBy: techDisplay }))}
                 className="mt-2 inline-flex items-center gap-1.5 rounded-md bg-surface-muted px-3 py-1.5 text-[12px] font-semibold text-body hover:bg-surface-soft"

@@ -5,7 +5,8 @@ import { useMemo, useState } from 'react';
 
 import { Icon } from '@/components/icon';
 import { api } from '@/lib/api-client';
-import type { Fault, Intervention, Machine } from '@maintflow/shared';
+import { Permission, type Fault, type Intervention, type Machine } from '@maintflow/shared';
+import { useCan } from '@/lib/permissions';
 
 const TYPE_FR: Record<string, string> = {
   mecanique: 'mécanique',
@@ -51,6 +52,7 @@ const FILTERS: { key: FilterKey; label: string }[] = [
 ];
 
 export default function HistoryPage() {
+  const canExport = useCan()(Permission.EXPORT_DATA);
   const { data: faults } = useQuery({ queryKey: ['faults'], queryFn: () => api.faults.list() });
   const { data: interventions } = useQuery({ queryKey: ['interventions'], queryFn: () => api.interventions.list() });
   const { data: machines } = useQuery({ queryKey: ['machines'], queryFn: () => api.machines.list() });
@@ -160,12 +162,14 @@ export default function HistoryPage() {
           ))}
         </select>
         <div className="flex-1" />
-        <button
-          onClick={exportCsv}
-          className="inline-flex items-center gap-2 rounded-md border border-transparent bg-surface-muted px-3.5 py-2 text-[13px] font-semibold text-body transition hover:bg-line"
-        >
-          <Icon name="download" size={14} /> CSV
-        </button>
+        {canExport && (
+          <button
+            onClick={exportCsv}
+            className="inline-flex items-center gap-2 rounded-md border border-transparent bg-surface-muted px-3.5 py-2 text-[13px] font-semibold text-body transition hover:bg-line"
+          >
+            <Icon name="download" size={14} /> CSV
+          </button>
+        )}
       </div>
 
       <div className="rounded-lg border border-line bg-surface px-5 py-[18px]">

@@ -8,13 +8,15 @@ import { Icon } from '@/components/icon';
 import { ConfirmDialog, Field, inputClass, Modal } from '@/components/ui/modal';
 import { addDaysISO, calendarCells, calendarTitle, daysUntil, todayISO, toISO } from '@/lib/dates';
 import { api, type PlanRuleInput } from '@/lib/api-client';
-import type { Intervention, Machine, PlanRule, Technician } from '@maintflow/shared';
+import { Permission, type Intervention, type Machine, type PlanRule, type Technician } from '@maintflow/shared';
+import { useCan } from '@/lib/permissions';
 
 const fmtDate = (iso: string) =>
   new Date(iso).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' });
 
 
 export default function PlanningPage() {
+  const canPlan = useCan()(Permission.PLAN_INTERVENTIONS);
   const qc = useQueryClient();
   const router = useRouter();
   const { data: rules } = useQuery({ queryKey: ['planning', 'rules'], queryFn: () => api.planning.rules() });
@@ -77,12 +79,14 @@ export default function PlanningPage() {
         <StatBox label="Rappels programmés" value={upcoming?.length ?? 0} />
         <StatBox label="Préventives planifiées" value={plannedPreventive} />
         <div className="flex-1" />
-        <button
-          onClick={() => setAdding(true)}
-          className="inline-flex items-center gap-2 rounded-md border border-brand bg-brand-bright px-3.5 py-2 text-[13px] font-bold text-brand-deep transition hover:bg-brand"
-        >
-          <Icon name="plus" size={14} /> Ajouter une planification
-        </button>
+        {canPlan && (
+          <button
+            onClick={() => setAdding(true)}
+            className="inline-flex items-center gap-2 rounded-md border border-brand bg-brand-bright px-3.5 py-2 text-[13px] font-bold text-brand-deep transition hover:bg-brand"
+          >
+            <Icon name="plus" size={14} /> Ajouter une planification
+          </button>
+        )}
       </div>
 
       {conflicts.length > 0 && (
@@ -141,7 +145,7 @@ export default function PlanningPage() {
                     {dueIn >= 0 ? `(J-${dueIn})` : '(échue)'}
                   </div>
                 </div>
-                <div className="flex flex-col items-end gap-1.5">
+                {canPlan && <div className="flex flex-col items-end gap-1.5">
                   <button
                     onClick={() => schedule.mutate(r.id)}
                     disabled={!r.active}
@@ -165,7 +169,7 @@ export default function PlanningPage() {
                       <Icon name="trash" size={13} />
                     </button>
                   </div>
-                </div>
+                </div>}
               </div>
             );
           })}
