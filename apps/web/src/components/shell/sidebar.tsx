@@ -24,10 +24,13 @@ const GROUPS: { key: NavItem['group']; label: string }[] = [
 ];
 
 export function Sidebar({
+  open = false,
   user,
   counts,
   onLogout,
 }: {
+  /** Drawer state below the `lg` breakpoint (always visible above). */
+  open?: boolean;
   user: SessionUser | null;
   counts: { machines?: number; activeFaults?: number; interventions?: number };
   onLogout: () => void;
@@ -48,7 +51,11 @@ export function Sidebar({
   const initials = user?.name.split(' ').map((p) => p[0]).slice(0, 2).join('') ?? '··';
 
   return (
-    <aside className="sticky top-0 flex h-screen flex-col border-r border-nav-border bg-nav-bg text-nav-text">
+    <aside
+      className={`fixed inset-y-0 left-0 z-50 flex h-screen w-[260px] flex-col border-r border-nav-border bg-nav-bg text-nav-text transition-transform duration-200 lg:sticky lg:top-0 lg:w-auto lg:translate-x-0 ${
+        open ? 'translate-x-0' : '-translate-x-full'
+      }`}
+    >
       <div className="flex items-center gap-2.5 border-b border-nav-border px-[18px] pb-[22px] pt-[18px]">
         <Image
           src="/logo-mark.png"

@@ -3,6 +3,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useState, type ReactNode } from 'react';
 
+import { Spinner, useBusy } from '@/components/ui/busy';
 import { Icon } from '@/components/icon';
 import { ConfirmDialog, Field, inputClass, Modal } from '@/components/ui/modal';
 import { api, type InvitationInput, type SiteUser } from '@/lib/api-client';
@@ -78,6 +79,7 @@ export default function UsersPage() {
   });
   const resendInvite = useMutation({
     mutationFn: (id: string) => api.users.invitations.resend(id),
+    meta: { silent: true },
     onSuccess: (inv) => {
       void qc.invalidateQueries({ queryKey: ['invitations'] });
       useToasts.getState().push('success', `Invitation renvoyée à ${inv.email}.`);
@@ -109,7 +111,7 @@ export default function UsersPage() {
         )}
       </header>
 
-      <div className="mb-[22px] grid grid-cols-4 gap-3.5">
+      <div className="mb-[22px] grid grid-cols-2 gap-3.5 lg:grid-cols-4">
         <StatCard icon="user" label="Utilisateurs totaux" value={list.length} sub={`${list.filter((u) => u.status === 'active').length} actifs`} />
         <StatCard icon="shield" label="Accès web" value={webAccess} sub="Dashboard desktop" />
         <StatCard icon="mobile" label="Accès mobile" value={mobileAccess} sub="App terrain" />
@@ -302,7 +304,7 @@ function TabButton({ active, onClick, children }: { active: boolean; onClick: ()
 
 function Table({ head, children }: { head: string[]; children: ReactNode }) {
   return (
-    <div className="overflow-hidden rounded-lg border border-line bg-surface">
+    <div className="overflow-x-auto rounded-lg border border-line bg-surface">
       <table className="w-full border-collapse text-[13px]">
         <thead>
           <tr className="bg-surface-soft text-[11px] uppercase tracking-[0.06em] text-mute">
@@ -321,7 +323,7 @@ function Table({ head, children }: { head: string[]; children: ReactNode }) {
 
 function PermissionsMatrix() {
   return (
-    <div className="overflow-hidden rounded-lg border border-line bg-surface">
+    <div className="overflow-x-auto rounded-lg border border-line bg-surface">
       <div className="border-b border-line px-5 py-4">
         <h3 className="text-sm font-semibold">Matrice des permissions</h3>
         <div className="mt-0.5 text-xs text-mute">
@@ -365,6 +367,7 @@ function PermissionsMatrix() {
 }
 
 function InviteForm({ open, onClose, onSave }: { open: boolean; onClose: () => void; onSave: (body: InvitationInput) => void }) {
+  const busy = useBusy();
   const [form, setForm] = useState<InvitationInput & { message: string }>({
     email: '', role: 'technicien', workshop: 'Atelier A', message: '',
   });
@@ -387,10 +390,10 @@ function InviteForm({ open, onClose, onSave }: { open: boolean; onClose: () => v
           </button>
           <button
             onClick={() => onSave({ email: form.email, role: form.role, workshop: form.workshop })}
-            disabled={!form.email}
+            disabled={busy || !form.email}
             className="inline-flex items-center gap-2 rounded-md border border-brand bg-brand-bright px-3.5 py-2 text-sm font-bold text-brand-deep transition hover:bg-brand disabled:opacity-50"
           >
-            <Icon name="arrowRight" size={14} /> Envoyer l’invitation
+            {busy ? <Spinner /> : <Icon name="arrowRight" size={14} />} {busy ? 'Enregistrement…' : 'Envoyer l’invitation'}
           </button>
         </>
       }
@@ -406,7 +409,7 @@ function InviteForm({ open, onClose, onSave }: { open: boolean; onClose: () => v
             autoFocus
           />
         </Field>
-        <div className="grid grid-cols-2 gap-3.5">
+        <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-2">
           <Field label="Rôle">
             <select className={inputClass} value={form.role} onChange={(e) => upd('role', e.target.value as UserRole)}>
               {ROLES.map((r) => (

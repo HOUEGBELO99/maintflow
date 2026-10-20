@@ -187,6 +187,8 @@ export const api = {
   },
   files: {
     forFault: (faultId: string) => request<Attachment[]>(`/files/faults/${faultId}`),
+    forIntervention: (interventionId: string) =>
+      request<Attachment[]>(`/files/interventions/${interventionId}`),
   },
   interventions: {
     list: () => request<Intervention[]>('/interventions'),

@@ -61,7 +61,7 @@ function HealthBand({ k }: { k: DashboardKpis }) {
   const CIRC = 2 * Math.PI * R;
   const off = CIRC * (1 - k.healthScore / 100);
   return (
-    <div className="flex items-center gap-6 rounded-lg border border-line bg-surface p-[22px] shadow-[var(--shadow-sm)]">
+    <div className="flex flex-col items-center gap-6 rounded-lg border border-line bg-surface p-[22px] sm:flex-row shadow-[var(--shadow-sm)]">
       <div className="relative h-36 w-36 flex-shrink-0">
         <svg width="144" height="144" viewBox="0 0 144 144">
           <circle cx="72" cy="72" r={R} fill="none" stroke="var(--surface-2)" strokeWidth="13" />
@@ -85,7 +85,7 @@ function HealthBand({ k }: { k: DashboardKpis }) {
           <div className="mt-0.5 text-[11px] font-semibold tracking-[0.06em] text-faint">/ 100</div>
         </div>
       </div>
-      <div className="min-w-0 flex-1">
+      <div className="w-full min-w-0 flex-1">
         <div className="text-[11px] font-bold uppercase tracking-[0.08em]" style={{ color }}>
           Score de santé global
         </div>
@@ -187,7 +187,7 @@ function WorkshopHeatmap({ machines }: { machines: Machine[] }) {
         </div>
       }
     >
-      <div className="grid grid-cols-[repeat(auto-fill,minmax(150px,1fr))] gap-3.5">
+      <div className="grid grid-cols-[repeat(auto-fill,minmax(min(150px,100%),1fr))] gap-3.5">
         {workshops.map((w) => {
           const ms = machines.filter((m) => m.workshop === w);
           return (
@@ -445,7 +445,7 @@ function Donut({ data }: { data: { type: string; count: number }[] }) {
     return { path, color: colors[i % colors.length], type: d.type, count: d.count };
   });
   return (
-    <div className="flex items-center gap-[18px]">
+    <div className="flex flex-wrap items-center gap-[18px]">
       <svg viewBox="0 0 160 160" width="160" height="160" className="flex-[0_0_160px]">
         {segments.map((s, i) => (
           <path key={i} d={s.path} fill={s.color} />
@@ -522,13 +522,13 @@ export default function DashboardPage() {
       </header>
 
       {/* Intelligence row */}
-      <div className="mb-[22px] grid gap-3.5 lg:grid-cols-[1.6fr_1fr]">
+      <div className="mb-[22px] grid grid-cols-1 gap-3.5 [&>*]:min-w-0 lg:grid-cols-[1.6fr_1fr]">
         {k ? <HealthBand k={k} /> : <Block h={188} />}
         {k ? <MaintenanceWeather k={k} /> : <Block h={188} />}
       </div>
 
       {/* Heatmap + predictions */}
-      <div className="mb-[22px] grid gap-3.5 lg:grid-cols-[1.5fr_1fr]">
+      <div className="mb-[22px] grid grid-cols-1 gap-3.5 [&>*]:min-w-0 lg:grid-cols-[1.5fr_1fr]">
         {machines.data ? <WorkshopHeatmap machines={machines.data} /> : <Block h={260} />}
         {top.data ? <PredictionsCard top={top.data} /> : <Block h={260} />}
       </div>
@@ -546,7 +546,7 @@ export default function DashboardPage() {
       </div>
 
       {/* Charts row */}
-      <div className="mt-[22px] grid gap-3.5 lg:grid-cols-[2fr_1fr]">
+      <div className="mt-[22px] grid grid-cols-1 gap-3.5 [&>*]:min-w-0 lg:grid-cols-[2fr_1fr]">
         <Card
           title="Activité de l'atelier"
           sub="Interventions et pannes sur 14 jours"
@@ -569,7 +569,7 @@ export default function DashboardPage() {
       </div>
 
       {/* Critical alerts + upcoming */}
-      <div className="mt-3.5 grid gap-3.5 lg:grid-cols-2">
+      <div className="mt-3.5 grid grid-cols-1 gap-3.5 [&>*]:min-w-0 lg:grid-cols-2">
         <section className="rounded-lg border border-line bg-surface shadow-[var(--shadow-sm)]">
           <div className="flex items-center justify-between border-b border-line px-5 py-4">
             <div>

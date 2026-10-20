@@ -29,6 +29,9 @@ export default function AppLayout({ children }: { children: ReactNode }) {
   const user = useAuth((s) => s.user);
   const logout = useAuth((s) => s.logout);
   const [mounted, setMounted] = useState(false);
+  // Mobile/tablet: the sidebar is a drawer, closed on every navigation.
+  const [navOpen, setNavOpen] = useState(false);
+  useEffect(() => setNavOpen(false), [pathname]);
 
   useEffect(() => setMounted(true), []);
   useEffect(() => {
@@ -46,8 +49,16 @@ export default function AppLayout({ children }: { children: ReactNode }) {
   const title = TITLES[pathname] ?? 'MaintFlow';
 
   return (
-    <div className="grid min-h-screen grid-cols-[232px_1fr]">
+    <div className="grid min-h-screen grid-cols-1 lg:grid-cols-[232px_1fr]">
+      {navOpen && (
+        <button
+          aria-label="Fermer le menu"
+          onClick={() => setNavOpen(false)}
+          className="fixed inset-0 z-40 bg-[rgba(10,20,12,0.45)] lg:hidden"
+        />
+      )}
       <Sidebar
+        open={navOpen}
         user={user}
         counts={{
           machines: kpis?.totalMachines,
@@ -61,8 +72,8 @@ export default function AppLayout({ children }: { children: ReactNode }) {
         }}
       />
       <div className="flex min-w-0 flex-col">
-        <Topbar title={title} />
-        <main className="mx-auto w-full max-w-[1480px] px-8 pb-20 pt-6">{children}</main>
+        <Topbar title={title} onMenu={() => setNavOpen(true)} />
+        <main className="mx-auto w-full min-w-0 max-w-[1480px] px-4 pb-20 pt-5 sm:px-6 lg:px-8 lg:pt-6">{children}</main>
       </div>
     </div>
   );

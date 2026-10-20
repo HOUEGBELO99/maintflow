@@ -92,7 +92,7 @@ export default function SettingsPage() {
           <div className="mt-0.5 text-xs text-mute">Sauvegarde et export des données de maintenance</div>
         </div>
         <div className="px-5 py-[18px]">
-          {canExport && <div className="grid grid-cols-3 gap-3">
+          {canExport && <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
             <ExportTile icon="file" title="Exporter en JSON" sub="Backup complet" onClick={exportJson} disabled={busy} />
             <ExportTile icon="file" title="Exporter en CSV" sub="Compatible Excel" onClick={exportCsv} disabled={busy} />
             <ExportTile icon="download" title="Imprimer en PDF" sub="Aperçu navigateur" onClick={() => window.print()} />
@@ -100,7 +100,7 @@ export default function SettingsPage() {
           {!canExport && <p className="text-[13px] text-mute">Votre rôle ne permet pas d’exporter les données.</p>}
 
           {/* Demo reset: admins only, and never offered in production (the API refuses it there). */}
-          {canReset && <div className="mt-4 flex items-center justify-between gap-3 rounded-md border border-dashed border-line-strong bg-surface-soft px-3.5 py-3.5">
+          {canReset && <div className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-md border border-dashed border-line-strong bg-surface-soft px-3.5 py-3.5">
             <div>
               <div className="text-[13.5px] font-semibold">Réinitialiser les données d’exemple</div>
               <div className="text-[12px] text-mute">

@@ -192,7 +192,7 @@ export default function MachineDetailPage() {
           {tab === 'info' && (
             <div className="rounded-lg border border-line bg-surface p-5">
               <h2 className="mb-4 text-[15px] font-bold">Informations techniques</h2>
-              <div className="grid grid-cols-2 gap-x-8 gap-y-4">
+              <div className="grid grid-cols-1 gap-x-8 gap-y-4 sm:grid-cols-2">
                 <Info label="Code constructeur" value={machine.code} />
                 <Info label="Type d’équipement" value={<span className="capitalize">{machine.type}</span>} />
                 <Info label="Atelier / Localisation" value={machine.workshop} />

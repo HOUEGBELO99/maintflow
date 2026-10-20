@@ -4,6 +4,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useRouter } from 'next/navigation';
 import { useEffect, useMemo, useState } from 'react';
 
+import { Spinner, useBusy } from '@/components/ui/busy';
 import { Icon } from '@/components/icon';
 import { ConfirmDialog, Field, inputClass, Modal } from '@/components/ui/modal';
 import { addDaysISO, calendarCells, calendarTitle, daysUntil, todayISO, toISO } from '@/lib/dates';
@@ -108,9 +109,9 @@ export default function PlanningPage() {
         </div>
       )}
 
-      <div className="mb-[22px] grid grid-cols-[1.1fr_0.9fr] gap-3.5">
+      <div className="mb-[22px] grid grid-cols-1 gap-3.5 xl:grid-cols-[1.1fr_0.9fr]">
         {/* Preventive rules */}
-        <div className="overflow-hidden rounded-lg border border-line bg-surface">
+        <div className="overflow-x-auto rounded-lg border border-line bg-surface">
           <div className="border-b border-line px-5 py-4">
             <h3 className="text-sm font-semibold">Règles de maintenance préventive</h3>
             <div className="mt-0.5 text-xs text-mute">Récurrence + rappel automatique avant échéance</div>
@@ -283,8 +284,8 @@ function PlanningCalendar({
   const eventsOn = (d: Date) => interventions.filter((i) => i.scheduledFor.slice(0, 10) === toISO(d));
 
   return (
-    <div className="rounded-lg border border-line bg-surface px-5 py-[18px]">
-      <div className="mb-3 flex items-center justify-between">
+    <div className="rounded-lg border border-line bg-surface px-3 py-[18px] sm:px-5">
+      <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
         <div className="text-[13px] font-semibold capitalize text-ink">{calendarTitle(cells)}</div>
         <div className="flex items-center gap-1">
           <button
@@ -313,6 +314,9 @@ function PlanningCalendar({
           </button>
         </div>
       </div>
+      {/* 7 columns stay readable on phones by scrolling sideways. */}
+      <div className="-mx-1 overflow-x-auto px-1 pb-1">
+      <div className="min-w-[640px]">
       <div className="mb-1.5 grid grid-cols-7 gap-1">
         {weekdays.map((w) => (
           <div key={w} className="px-1.5 py-1 text-[11px] font-semibold uppercase tracking-[0.06em] text-mute">
@@ -358,6 +362,8 @@ function PlanningCalendar({
           );
         })}
       </div>
+      </div>
+      </div>
     </div>
   );
 }
@@ -375,6 +381,7 @@ function PlanRuleForm({
   onClose: () => void;
   onSave: (body: PlanRuleInput) => void;
 }) {
+  const busy = useBusy();
   const [form, setForm] = useState<PlanRuleInput>({
     title: '', machineId: '', technicianId: '', everyWeeks: 4, duration: 2, reminderLead: 2, nextDue: addDaysISO(todayISO(), 7),
   });
@@ -408,10 +415,10 @@ function PlanRuleForm({
           </button>
           <button
             onClick={() => onSave(form)}
-            disabled={!valid}
+            disabled={busy || !valid}
             className="inline-flex items-center gap-2 rounded-md border border-brand-deep bg-brand-deep px-3.5 py-2 text-sm font-semibold text-white disabled:opacity-50"
           >
-            <Icon name="check" size={14} /> Créer &amp; ajouter au calendrier
+            {busy ? <Spinner /> : <Icon name="check" size={14} />} {busy ? 'Enregistrement…' : 'Créer &amp; ajouter au calendrier'}
           </button>
         </>
       }
@@ -425,7 +432,7 @@ function PlanRuleForm({
             placeholder="ex. Lubrification mensuelle convoyeur"
           />
         </Field>
-        <div className="grid grid-cols-2 gap-3.5">
+        <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-2">
           <Field label="Machine">
             <select className={inputClass} value={form.machineId} onChange={(e) => upd('machineId', e.target.value)}>
               {machines.map((m) => (
@@ -445,7 +452,7 @@ function PlanRuleForm({
             </select>
           </Field>
         </div>
-        <div className="grid grid-cols-3 gap-3.5">
+        <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-3">
           <Field label="Fréquence (semaines)">
             <input
               type="number"

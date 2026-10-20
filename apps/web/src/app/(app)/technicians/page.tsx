@@ -118,7 +118,7 @@ export default function TechniciansPage() {
         </span>
       </div>
 
-      <div className="grid grid-cols-[repeat(auto-fill,minmax(300px,1fr))] gap-3.5">
+      <div className="grid grid-cols-[repeat(auto-fill,minmax(min(300px,100%),1fr))] gap-3.5">
         {list.map((t) => {
           const load = Math.min(1, t.activeHours / 12);
           return (
@@ -258,7 +258,7 @@ function TechnicianDetail({ tech, onClose }: { tech: Technician | null; onClose:
 
         <TechnicianSettings tech={tech} />
 
-        <div className="grid grid-cols-4 gap-3">
+        <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
           {stat(`${tech.onTime}%`, 'Résolu dans les délais')}
           {stat(
             <div className="mb-0.5">

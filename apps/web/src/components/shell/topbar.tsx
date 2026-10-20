@@ -2,9 +2,29 @@
 
 import { Icon } from '@/components/icon';
 
-export function Topbar({ title, action }: { title: string; action?: React.ReactNode }) {
+export function Topbar({
+  title,
+  action,
+  onMenu,
+}: {
+  title: string;
+  action?: React.ReactNode;
+  /** Opens the navigation drawer (mobile / tablet). */
+  onMenu?: () => void;
+}) {
   return (
-    <header className="sticky top-0 z-30 flex h-[60px] items-center gap-3 border-b border-line bg-surface px-6">
+    <header className="sticky top-0 z-30 flex h-[60px] items-center gap-3 border-b border-line bg-surface px-4 sm:px-6">
+      {onMenu && (
+        <button
+          onClick={onMenu}
+          aria-label="Ouvrir le menu"
+          className="-ml-1 inline-flex h-9 w-9 items-center justify-center rounded-md text-ink hover:bg-surface-muted lg:hidden"
+        >
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden>
+            <path d="M4 6h16M4 12h16M4 18h16" />
+          </svg>
+        </button>
+      )}
       <div className="inline-flex items-center gap-2.5 text-base font-semibold tracking-tight">
         <span className="h-1.5 w-1.5 rounded-full bg-brand-bright shadow-[0_0_6px_var(--brand-bright)]" />
         {title}
