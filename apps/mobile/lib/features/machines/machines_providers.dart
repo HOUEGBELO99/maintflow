@@ -20,7 +20,7 @@ final machinesListProvider = StreamProvider.autoDispose<List<Machine>>((ref) {
   );
   if (signedIn) unawaited(repo.refreshMachines().catchError((Object _) {}));
   return repo.watchMachines().map(
-        (list) => list.toList()..sort((a, b) => a.code.compareTo(b.code)),
+        (list) => list.toList()..sort((a, b) => b.code.compareTo(a.code)),
       );
 });
 

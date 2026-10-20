@@ -60,7 +60,7 @@ describe('InterventionsService', () => {
     await service.findAll('site-1', { status: InterventionStatus.PLANNED, technicianId: 'u-1' });
     expect(prisma.intervention.findMany).toHaveBeenCalledWith({
       where: { siteId: 'site-1', status: InterventionStatus.PLANNED, technicianId: 'u-1' },
-      orderBy: { scheduledFor: 'asc' },
+      orderBy: [{ scheduledFor: 'desc' }, { createdAt: 'desc' }],
     });
   });
 

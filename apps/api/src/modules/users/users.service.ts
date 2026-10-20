@@ -60,12 +60,12 @@ export class UsersService {
     private readonly profiles: AuthProfileCache,
   ) {}
 
-  /** Team members, oldest first (matches the seeded/prototype ordering). */
+  /** Team members, newest first. */
   findAll(siteId: string) {
     return this.prisma.user.findMany({
       where: { siteId },
       select: USER_SELECT,
-      orderBy: { createdAt: 'asc' },
+      orderBy: { createdAt: 'desc' },
     });
   }
 

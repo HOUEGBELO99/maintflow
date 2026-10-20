@@ -8,7 +8,7 @@ import 'package:maintflow_mobile/data/repositories/missions_repository.dart';
 import 'package:maintflow_mobile/features/auth/auth_controller.dart';
 
 /// The signed-in technician's interventions, read from the offline cache
-/// (soonest first) and refreshed from the API in the background. A failed
+/// (most recent first) and refreshed from the API in the background. A failed
 /// refresh (e.g. offline) is ignored so the cached data keeps showing.
 final missionsProvider = StreamProvider.autoDispose<List<Intervention>>((ref) {
   final repo = ref.watch(missionsRepositoryProvider);
@@ -18,7 +18,7 @@ final missionsProvider = StreamProvider.autoDispose<List<Intervention>>((ref) {
   }
   return repo.watchMissions().map(
         (list) => list.toList()
-          ..sort((a, b) => a.scheduledFor.compareTo(b.scheduledFor)),
+          ..sort((a, b) => b.scheduledFor.compareTo(a.scheduledFor)),
       );
 });
 

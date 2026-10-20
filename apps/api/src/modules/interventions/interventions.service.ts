@@ -37,7 +37,7 @@ export class InterventionsService {
     if (filters.technicianId) where.technicianId = filters.technicianId;
     if (filters.machineId) where.machineId = filters.machineId;
     if (filters.kind) where.kind = filters.kind;
-    return this.prisma.intervention.findMany({ where, orderBy: { scheduledFor: 'asc' } });
+    return this.prisma.intervention.findMany({ where, orderBy: [{ scheduledFor: 'desc' }, { createdAt: 'desc' }] });
   }
 
   async findOne(siteId: string, id: string) {

@@ -30,7 +30,7 @@ export class TechniciansService {
       this.prisma.technician.findMany({
         where: { user: { siteId } },
         include: { user: { select: { name: true, color: true } } },
-        orderBy: { id: 'asc' },
+        orderBy: { user: { createdAt: 'desc' } },
       }),
       this.prisma.intervention.groupBy({
         by: ['technicianId'],

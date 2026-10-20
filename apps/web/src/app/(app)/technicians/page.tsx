@@ -212,7 +212,7 @@ function TechnicianDetail({ tech, onClose }: { tech: Technician | null; onClose:
   const mine = (interventions ?? []).filter((i) => i.technicianId === tech.userId);
   const active = mine
     .filter((i) => i.status !== 'completed' && i.status !== 'cancelled')
-    .sort((a, b) => a.scheduledFor.localeCompare(b.scheduledFor));
+    .sort((a, b) => b.scheduledFor.localeCompare(a.scheduledFor));
   const done = mine
     .filter((i) => i.status === 'completed')
     .sort((a, b) => b.scheduledFor.localeCompare(a.scheduledFor));
