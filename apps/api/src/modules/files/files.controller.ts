@@ -1,12 +1,4 @@
-import {
-  Controller,
-  Get,
-  Param,
-  ParseUUIDPipe,
-  Post,
-  UploadedFile,
-  UseInterceptors,
-} from '@nestjs/common';
+import { Controller, Get, Param, ParseUUIDPipe, Post, Query, UploadedFile, UseInterceptors } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { ApiBearerAuth, ApiConsumes, ApiTags } from '@nestjs/swagger';
 
@@ -41,8 +33,15 @@ export class FilesController {
     @CurrentUser() user: AuthUser,
     @Param('interventionId', ParseUUIDPipe) interventionId: string,
     @UploadedFile() file: UploadedFileLike,
+    // `?kind=signature` for the technician's closure signature; photo otherwise.
+    @Query('kind') kind?: string,
   ) {
-    return this.files.attachToIntervention(user.siteId, interventionId, file);
+    return this.files.attachToIntervention(
+      user.siteId,
+      interventionId,
+      file,
+      kind === 'signature' ? 'signature' : 'photo',
+    );
   }
 
   @Get('faults/:faultId')

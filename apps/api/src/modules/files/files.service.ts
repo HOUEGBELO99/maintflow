@@ -59,6 +59,7 @@ export class FilesService {
     siteId: string,
     interventionId: string,
     file: UploadedFileLike,
+    kind: 'photo' | 'signature' = 'photo',
   ): Promise<AttachmentResult> {
     this.assertImage(file);
     const intervention = await this.prisma.intervention.findFirst({
@@ -72,7 +73,7 @@ export class FilesService {
     const attachment = await this.prisma.attachment.create({
       data: {
         storagePath: path,
-        kind: 'photo',
+        kind,
         mimeType: file.mimetype,
         interventionId,
       },
