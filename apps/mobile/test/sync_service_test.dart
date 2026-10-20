@@ -119,4 +119,44 @@ void main() {
     expect(ops.single.method, 'POST');
     expect(ops.single.path, '/faults');
   });
+
+  test('a signature upload waits offline, then is sent as multipart', () async {
+    await SyncService(db, _dio(_OfflineAdapter())).uploadInterventionFile(
+      'i1',
+      bytes: const [137, 80, 78, 71],
+      filename: 'signature-i1.png',
+      mimeType: 'image/png',
+      kind: 'signature',
+    );
+    final ops = await db.pendingOps();
+    expect(ops.single.method, SyncService.uploadMethod);
+    expect(ops.single.path, '/files/interventions/i1?kind=signature');
+
+    final seen = <RequestOptions>[];
+    final online = Dio(BaseOptions(baseUrl: 'http://localhost:4000/api/v1'))
+      ..httpClientAdapter = _RecordingAdapter(seen);
+    await SyncService(db, online).drain();
+
+    expect(await db.pendingOps(), isEmpty);
+    expect(seen.single.method, 'POST');
+    expect(seen.single.data, isA<FormData>());
+  });
+}
+
+class _RecordingAdapter implements HttpClientAdapter {
+  _RecordingAdapter(this.seen);
+  final List<RequestOptions> seen;
+
+  @override
+  Future<ResponseBody> fetch(
+    RequestOptions options,
+    Stream<Uint8List>? requestStream,
+    Future<void>? cancelFuture,
+  ) async {
+    seen.add(options);
+    return ResponseBody.fromString(jsonEncode(<String, dynamic>{}), 201);
+  }
+
+  @override
+  void close({bool force = false}) {}
 }
