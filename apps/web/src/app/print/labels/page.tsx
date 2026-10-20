@@ -7,9 +7,12 @@ import { Suspense, useEffect, useMemo, useState } from 'react';
 
 import type { Machine } from '@maintflow/shared';
 import { Icon } from '@/components/icon';
+import { Spinner } from '@/components/ui/busy';
 import { api } from '@/lib/api-client';
+import { downloadLabelsPdf } from '@/lib/labels-pdf';
 import { machineQrPayload, QR_PRINT_OPTIONS } from '@/lib/qr';
 import { useAuth } from '@/lib/store/auth';
+import { useToasts } from '@/lib/store/toasts';
 
 /**
  * Printable QR tags for machines — `/print/labels?ids=<id>,<id>` (or every
@@ -50,6 +53,18 @@ function Labels() {
     return all.filter((m) => wanted.has(m.id));
   }, [machines, ids]);
 
+  const [exporting, setExporting] = useState(false);
+  const exportPdf = async () => {
+    setExporting(true);
+    try {
+      await downloadLabelsPdf(selected);
+    } catch {
+      useToasts.getState().push('error', 'Le PDF n’a pas pu être généré — réessayez.');
+    } finally {
+      setExporting(false);
+    }
+  };
+
   if (!mounted || !token) return null;
 
   return (
@@ -59,7 +74,7 @@ function Labels() {
         @media print { html, body { background: #fff !important; } }
       `}</style>
 
-      <header className="sticky top-0 z-10 flex items-center justify-between border-b border-line bg-surface px-6 py-3 print:hidden">
+      <header className="sticky top-0 z-10 flex flex-wrap items-center justify-between gap-3 border-b border-line bg-surface px-6 py-3 print:hidden">
         <div>
           <div className="text-[15px] font-semibold text-ink">Étiquettes QR</div>
           <div className="text-[12px] text-mute">
@@ -76,9 +91,17 @@ function Labels() {
           <button
             onClick={() => window.print()}
             disabled={selected.length === 0}
+            className="inline-flex items-center gap-2 rounded-md border border-line px-3 py-2 text-[13px] font-semibold text-body hover:bg-surface-muted disabled:opacity-50"
+          >
+            <Icon name="file" size={14} /> Imprimer
+          </button>
+          <button
+            onClick={() => void exportPdf()}
+            disabled={selected.length === 0 || exporting}
             className="inline-flex items-center gap-2 rounded-md border border-brand bg-brand-bright px-3.5 py-2 text-[13px] font-bold text-brand-deep transition hover:bg-brand disabled:opacity-50"
           >
-            <Icon name="download" size={14} /> Imprimer
+            {exporting ? <Spinner /> : <Icon name="download" size={14} />}
+            {exporting ? 'Génération…' : 'Télécharger le PDF'}
           </button>
         </div>
       </header>
