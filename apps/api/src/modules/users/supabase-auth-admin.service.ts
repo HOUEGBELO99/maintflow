@@ -52,4 +52,23 @@ export class SupabaseAuthAdminService {
     if (error) throw error;
     return { id: data.user.id, email: data.user.email ?? email };
   }
+
+  /**
+   * Send the setup email again. Supabase re-sends the invitation while the
+   * account is unconfirmed; once confirmed it refuses, and a password-setup
+   * (recovery) link is sent instead — both land on /auth/set-password.
+   * Returns which email went out.
+   */
+  async resendInvite(email: string): Promise<'invite' | 'recovery'> {
+    const invite = await this.client.auth.admin.inviteUserByEmail(email, {
+      redirectTo: this.redirectTo,
+    });
+    if (!invite.error) return 'invite';
+
+    const recovery = await this.client.auth.resetPasswordForEmail(email, {
+      redirectTo: this.redirectTo,
+    });
+    if (recovery.error) throw recovery.error;
+    return 'recovery';
+  }
 }

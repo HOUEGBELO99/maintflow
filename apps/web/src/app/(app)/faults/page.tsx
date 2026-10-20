@@ -3,6 +3,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useState } from 'react';
 
+import { Spinner, useBusy } from '@/components/ui/busy';
 import { Icon } from '@/components/icon';
 import { ConfirmDialog, Field, inputClass, Modal } from '@/components/ui/modal';
 import { api, type FaultInput } from '@/lib/api-client';
@@ -276,7 +277,7 @@ function FaultPhotos({ fault, onClose }: { fault: Fault | null; onClose: () => v
         <p className="py-6 text-center text-sm text-mute">Aucune photo pour cette panne.</p>
       )}
       {data && data.length > 0 && (
-        <div className="grid grid-cols-3 gap-2.5">
+        <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3">
           {data.map((a) => (
             <a key={a.id} href={a.url} target="_blank" rel="noreferrer">
               {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -324,6 +325,7 @@ function FaultForm({
   onClose: () => void;
   onSave: (body: FaultInput) => void;
 }) {
+  const busy = useBusy();
   const [form, setForm] = useState<FaultInput>({ machineId: '', type: 'mecanique', description: '', severity: 'medium' });
   useEffect(() => {
     if (open) setForm({ machineId: machines[0]?.id ?? '', type: 'mecanique', description: '', severity: 'medium' });
@@ -343,10 +345,10 @@ function FaultForm({
           </button>
           <button
             onClick={() => onSave(form)}
-            disabled={!form.machineId || form.description.length < 4}
+            disabled={busy || !form.machineId || form.description.length < 4}
             className="inline-flex items-center gap-2 rounded-md border border-brand-deep bg-brand-deep px-3.5 py-2 text-sm font-semibold text-white disabled:opacity-50"
           >
-            <Icon name="check" size={14} /> Enregistrer
+            {busy ? <Spinner /> : <Icon name="check" size={14} />} {busy ? 'Enregistrement…' : 'Enregistrer'}
           </button>
         </>
       }
@@ -361,7 +363,7 @@ function FaultForm({
             ))}
           </select>
         </Field>
-        <div className="grid grid-cols-2 gap-3.5">
+        <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-2">
           <Field label="Type de panne">
             <select className={inputClass} value={form.type} onChange={(e) => upd('type', e.target.value as FaultType)}>
               {Object.entries(TYPE_LABEL).map(([v, l]) => (

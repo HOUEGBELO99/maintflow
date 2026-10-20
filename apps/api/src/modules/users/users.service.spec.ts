@@ -17,12 +17,15 @@ describe('UsersService', () => {
       update: jest.fn(),
       create: jest.fn() as jest.Mock<Promise<unknown>, [{ data: Record<string, unknown> }]>,
     },
+    technician: { upsert: jest.fn() },
     invitation: {
       findMany: jest.fn(),
+      findFirst: jest.fn(),
+      update: jest.fn(),
       create: jest.fn() as jest.Mock<Promise<unknown>, [{ data: { siteId: string; invitedById: string } }]>,
     },
   };
-  const authAdmin = { invite: jest.fn() };
+  const authAdmin = { invite: jest.fn(), resendInvite: jest.fn() };
 
   beforeEach(async () => {
     jest.clearAllMocks();
@@ -117,5 +120,51 @@ describe('UsersService', () => {
     ).rejects.toBeInstanceOf(ConflictException);
     expect(authAdmin.invite).not.toHaveBeenCalled();
     expect(prisma.user.create).not.toHaveBeenCalled();
+  });
+
+  describe('resendInvitation', () => {
+    const pending = {
+      id: 'inv-1', siteId: 'site-1', email: 'new@usine.fr', role: 'technicien',
+      workshop: 'Atelier A', status: 'pending', sentAt: new Date('2026-10-01'), invitedBy: { name: 'L. Moreau' },
+    };
+
+    it('re-sends the email and refreshes sentAt', async () => {
+      prisma.invitation.findFirst.mockResolvedValue(pending);
+      authAdmin.resendInvite.mockResolvedValue('invite');
+      prisma.invitation.update.mockResolvedValue({ ...pending, sentAt: new Date() });
+
+      const res = await service.resendInvitation('site-1', 'inv-1');
+
+      expect(prisma.invitation.findFirst).toHaveBeenCalledWith({ where: { id: 'inv-1', siteId: 'site-1' } });
+      expect(authAdmin.resendInvite).toHaveBeenCalledWith('new@usine.fr');
+      expect(res.sent).toBe('invite');
+    });
+
+    it('refuses an invitation from another site', async () => {
+      prisma.invitation.findFirst.mockResolvedValue(null);
+      await expect(service.resendInvitation('site-1', 'foreign')).rejects.toThrow('not found');
+      expect(authAdmin.resendInvite).not.toHaveBeenCalled();
+    });
+
+    it('refuses an invitation that is no longer pending', async () => {
+      prisma.invitation.findFirst.mockResolvedValue({ ...pending, status: 'accepted' });
+      await expect(service.resendInvitation('site-1', 'inv-1')).rejects.toThrow('no longer pending');
+    });
+  });
+
+  it('gives a newly invited technician a technician profile', async () => {
+    prisma.user.findUnique.mockResolvedValue(null);
+    authAdmin.invite.mockResolvedValue({ id: 'auth-9', email: 'tech@usine.fr' });
+    prisma.user.create.mockResolvedValue({});
+    prisma.invitation.create.mockResolvedValue({
+      id: 'inv-9', email: 'tech@usine.fr', role: 'technicien', workshop: 'Atelier A',
+      status: 'pending', sentAt: new Date(), invitedBy: { name: 'L. Moreau' },
+    });
+    await service.createInvitation('site-1', 'admin-1', {
+      email: 'tech@usine.fr', role: 'technicien', workshop: 'Atelier A',
+    } as never);
+    expect(prisma.technician.upsert).toHaveBeenCalledWith({
+      where: { userId: 'auth-9' }, update: {}, create: { userId: 'auth-9' },
+    });
   });
 });

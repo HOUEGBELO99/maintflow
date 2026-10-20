@@ -90,10 +90,26 @@ class _CloseWorkScreenState extends ConsumerState<CloseWorkScreen> {
       actualDuration: actual,
       signedBy: signedBy,
     );
-    await ref.read(syncServiceProvider).mutateIntervention(
-          updated,
-          buildCloseBody(actualDuration: actual, signedBy: signedBy),
+    final sync = ref.read(syncServiceProvider);
+    await sync.mutateIntervention(
+      updated,
+      buildCloseBody(actualDuration: actual, signedBy: signedBy),
+    );
+    // The handwritten signature itself goes to the work order (queued if
+    // offline) so the back-office shows it instead of a typed name. Started
+    // now, finished in the background: closing never waits on the image.
+    unawaited(
+      _sig.toPngBytes().then((png) async {
+        if (png == null) return;
+        await sync.uploadInterventionFile(
+          mission.id,
+          bytes: png,
+          filename: 'signature-${mission.id}.png',
+          mimeType: 'image/png',
+          kind: 'signature',
         );
+      }).catchError((Object _) {}),
+    );
     if (!mounted) return;
     // Generate the report PDF and open the share sheet (WhatsApp, e-mail…).
     // Best-effort + unawaited so closure persists and navigates regardless.

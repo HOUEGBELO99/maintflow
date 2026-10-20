@@ -57,6 +57,9 @@ AppPill _statusPill(Intervention m) {
 /// Mission (work-order) detail. The checklist and status changes are written
 /// offline-first via [SyncService] — the cache updates instantly and the API
 /// call is queued for replay.
+/// The mission whose start is in progress (GPS check-in can take seconds).
+final _startingMissionProvider = StateProvider<String?>((ref) => null);
+
 class MissionDetailScreen extends ConsumerWidget {
   const MissionDetailScreen({required this.missionId, super.key});
 
@@ -107,7 +110,13 @@ class MissionDetailScreen extends ConsumerWidget {
     // it resolves to null and we start without coordinates.
     Future<void> start() async {
       if (mission == null) return;
-      final pos = await ref.read(locationServiceProvider).current();
+      final starting = ref.read(_startingMissionProvider.notifier);
+      if (starting.state != null) return;
+      starting.state = mission.id;
+      final pos = await ref
+          .read(locationServiceProvider)
+          .current()
+          .whenComplete(() => starting.state = null);
       final updated = mission.copyWith(
         status: InterventionStatus.inProgress,
         checkInLat: pos?.lat,
@@ -306,6 +315,7 @@ class _Body extends ConsumerWidget {
             allDone: allDone,
             onStart: onStart,
             onClose: onClose,
+            starting: ref.watch(_startingMissionProvider) == mission.id,
           )
         else
           const Padding(
@@ -330,7 +340,11 @@ class _ActionButton extends StatelessWidget {
     required this.allDone,
     required this.onStart,
     required this.onClose,
+    this.starting = false,
   });
+
+  /// GPS check-in in progress: show it instead of looking unresponsive.
+  final bool starting;
 
   final InterventionStatus status;
   final bool allDone;
@@ -341,8 +355,9 @@ class _ActionButton extends StatelessWidget {
   Widget build(BuildContext context) {
     if (status == InterventionStatus.planned) {
       return _Cta(
-        label: 'Démarrer l’intervention',
-        onTap: onStart,
+        label: starting ? 'Localisation…' : 'Démarrer l’intervention',
+        onTap: starting ? null : onStart,
+        loading: starting,
       );
     }
     if (status == InterventionStatus.inProgress) {
@@ -357,14 +372,15 @@ class _ActionButton extends StatelessWidget {
 }
 
 class _Cta extends StatelessWidget {
-  const _Cta({required this.label, this.onTap});
+  const _Cta({required this.label, this.onTap, this.loading = false});
 
   final String label;
   final VoidCallback? onTap;
+  final bool loading;
 
   @override
   Widget build(BuildContext context) {
-    final enabled = onTap != null;
+    final enabled = onTap != null || loading;
     return Material(
       color: enabled ? AppColors.brandDeep : AppColors.faint,
       borderRadius: BorderRadius.circular(100),
@@ -373,15 +389,29 @@ class _Cta extends StatelessWidget {
         onTap: onTap,
         child: Padding(
           padding: const EdgeInsets.symmetric(vertical: 15),
-          child: Center(
-            child: Text(
-              label,
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 14,
-                fontWeight: FontWeight.w600,
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              if (loading) ...[
+                const SizedBox(
+                  width: 16,
+                  height: 16,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    color: Colors.white,
+                  ),
+                ),
+                const SizedBox(width: 10),
+              ],
+              Text(
+                label,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                ),
               ),
-            ),
+            ],
           ),
         ),
       ),

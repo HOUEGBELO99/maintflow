@@ -187,6 +187,8 @@ export const api = {
   },
   files: {
     forFault: (faultId: string) => request<Attachment[]>(`/files/faults/${faultId}`),
+    forIntervention: (interventionId: string) =>
+      request<Attachment[]>(`/files/interventions/${interventionId}`),
   },
   interventions: {
     list: () => request<Intervention[]>('/interventions'),
@@ -226,6 +228,8 @@ export const api = {
       list: () => request<Invitation[]>('/users/invitations'),
       create: (body: InvitationInput) =>
         request<Invitation>('/users/invitations', { method: 'POST', body: JSON.stringify(body) }),
+      resend: (id: string) =>
+        request<Invitation & { sent: 'invite' | 'recovery' }>(`/users/invitations/${id}/resend`, { method: 'POST' }),
     },
   },
 };

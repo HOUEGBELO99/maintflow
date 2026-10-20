@@ -134,4 +134,12 @@ describe('FilesService', () => {
       url: 'https://signed/url',
     });
   });
+
+  it('records a closure signature as kind "signature"', async () => {
+    prisma.intervention.findFirst.mockResolvedValue({ id: 'i-1' });
+    prisma.attachment.create.mockResolvedValue({ id: 'a-1', storagePath: 'p', kind: 'signature', mimeType: 'image/png', faultId: null, interventionId: 'i-1', createdAt: new Date() });
+    await service.attachToIntervention('site-1', 'i-1', image({ mimetype: 'image/png', originalname: 'signature.png' }), 'signature');
+    const { data } = prisma.attachment.create.mock.calls[0]![0];
+    expect(data).toMatchObject({ kind: 'signature', interventionId: 'i-1' });
+  });
 });

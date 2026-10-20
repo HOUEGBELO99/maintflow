@@ -4,6 +4,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 
+import { Spinner, useBusy } from '@/components/ui/busy';
 import { Icon } from '@/components/icon';
 import { ConfirmDialog, Field, inputClass, Modal } from '@/components/ui/modal';
 import { useCan } from '@/lib/permissions';
@@ -266,6 +267,7 @@ function MachineForm({
   onClose: () => void;
   onSave: (form: FormState) => void;
 }) {
+  const busy = useBusy();
   const [form, setForm] = useState<FormState>(EMPTY);
   useEffect(() => {
     if (editing) {
@@ -297,10 +299,10 @@ function MachineForm({
           </button>
           <button
             onClick={() => onSave(form)}
-            disabled={!form.name}
+            disabled={busy || !form.name}
             className="inline-flex items-center gap-2 rounded-md border border-brand-deep bg-brand-deep px-3.5 py-2 text-sm font-semibold text-white disabled:opacity-50"
           >
-            <Icon name="check" size={14} /> Enregistrer
+            {busy ? <Spinner /> : <Icon name="check" size={14} />} {busy ? 'Enregistrement…' : 'Enregistrer'}
           </button>
         </>
       }
@@ -309,7 +311,7 @@ function MachineForm({
         <Field label="Nom de la machine">
           <input className={inputClass} value={form.name} onChange={(e) => upd('name', e.target.value)} placeholder="ex : Compresseur Atlas A7" />
         </Field>
-        <div className="grid grid-cols-2 gap-3.5">
+        <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-2">
           <Field label="Type">
             <select className={inputClass} value={form.type} onChange={(e) => upd('type', e.target.value)}>
               {MACHINE_TYPES.map((x) => (
@@ -323,7 +325,7 @@ function MachineForm({
             <input className={inputClass} value={form.workshop} onChange={(e) => upd('workshop', e.target.value)} />
           </Field>
         </div>
-        <div className="grid grid-cols-2 gap-3.5">
+        <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-2">
           <Field label="Date d’installation">
             <input type="date" className={inputClass} value={form.installedAt} onChange={(e) => upd('installedAt', e.target.value)} />
           </Field>

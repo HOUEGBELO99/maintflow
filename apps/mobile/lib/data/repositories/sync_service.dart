@@ -43,11 +43,51 @@ class SyncService {
     await drain();
   }
 
+  /// Attach a file to an intervention offline-first (e.g. the technician's
+  /// closure signature). Queued after any pending PATCH so it reaches the
+  /// server once the intervention is up to date; replayed on reconnect.
+  Future<void> uploadInterventionFile(
+    String interventionId, {
+    required List<int> bytes,
+    required String filename,
+    required String mimeType,
+    String kind = 'photo',
+  }) async {
+    await _db.enqueueOp(
+      uploadMethod,
+      '/files/interventions/$interventionId?kind=$kind',
+      jsonEncode({
+        'filename': filename,
+        'mimeType': mimeType,
+        'data': base64Encode(bytes),
+      }),
+    );
+    await drain();
+  }
+
+  /// Queue marker for multipart uploads (the body holds the file in base64).
+  static const uploadMethod = 'UPLOAD';
+
   /// Replay queued ops in order. Stops at the first network failure (kept for a
   /// later retry); drops ops the server rejects (4xx/5xx) to avoid poisoning.
   Future<void> drain() async {
     for (final op in await _db.pendingOps()) {
       try {
+        if (op.method == uploadMethod) {
+          final file = jsonDecode(op.body) as Map<String, dynamic>;
+          await _dio.post<dynamic>(
+            op.path,
+            data: FormData.fromMap({
+              'file': MultipartFile.fromBytes(
+                base64Decode(file['data'] as String),
+                filename: file['filename'] as String,
+                contentType: DioMediaType.parse(file['mimeType'] as String),
+              ),
+            }),
+          );
+          await _db.deleteOp(op.id);
+          continue;
+        }
         await _dio.request<dynamic>(
           op.path,
           data: jsonDecode(op.body),

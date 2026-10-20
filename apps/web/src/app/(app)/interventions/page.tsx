@@ -3,6 +3,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useState } from 'react';
 
+import { Spinner, useBusy } from '@/components/ui/busy';
 import { Icon } from '@/components/icon';
 import { ConfirmDialog, Field, inputClass, Modal } from '@/components/ui/modal';
 import { calendarCells, calendarTitle, todayISO, toISO } from '@/lib/dates';
@@ -263,7 +264,9 @@ export default function InterventionsPage() {
         saving={patchI.isPending}
         readOnly={!can(Permission.PLAN_INTERVENTIONS)}
         onClose={() => setSheetFor(null)}
-        onSave={(body) => sheetItem && patchI.mutate({ id: sheetItem.id, body })}
+        onSave={(body) =>
+          sheetItem && patchI.mutate({ id: sheetItem.id, body }, { onSuccess: () => setSheetFor(null) })
+        }
       />
       <ConfirmDialog
         open={!!confirmDel}
@@ -294,6 +297,7 @@ function InterventionForm({
   onClose: () => void;
   onSave: (body: InterventionInput) => void;
 }) {
+  const busy = useBusy();
   const [step, setStep] = useState<1 | 2>(1);
   const [form, setForm] = useState<InterventionInput>({
     machineId: '', technicianId: '', kind: 'corrective', description: '',
@@ -361,10 +365,10 @@ function InterventionForm({
           )}
           <button
             onClick={() => onSave(form)}
-            disabled={!canSave}
+            disabled={busy || !canSave}
             className="inline-flex items-center gap-2 rounded-md border border-brand-deep bg-brand-deep px-3.5 py-2 text-sm font-semibold text-white disabled:opacity-50"
           >
-            <Icon name="check" size={14} /> Planifier
+            {busy ? <Spinner /> : <Icon name="check" size={14} />} {busy ? 'Enregistrement…' : 'Planifier'}
           </button>
         </>
       }
@@ -468,7 +472,7 @@ function InterventionForm({
               </select>
             </Field>
 
-            <div className="grid grid-cols-2 gap-3.5">
+            <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-2">
               <Field label="Date prévue">
                 <input type="date" className={inputClass} value={form.scheduledFor} onChange={(e) => upd('scheduledFor', e.target.value)} />
               </Field>
@@ -536,22 +540,29 @@ function InterventionSheet({
     }
   }, [item]);
 
+  // The signature is drawn by the technician on the mobile app at closure.
+  const { data: attachments } = useQuery({
+    queryKey: ['files', 'intervention', item?.id],
+    queryFn: () => api.files.forIntervention(item!.id),
+    enabled: !!item,
+  });
+
   if (!item) return null;
   const isClosed = item.status === 'completed';
   const locked = isClosed || readOnly;
   const doneCount = checklist.filter((c) => c.done).length;
   const allDone = checklist.length > 0 && doneCount === checklist.length;
-  const signed = !!draft.signedBy;
+  const signature = attachments?.find((a) => a.kind === 'signature');
   const techDisplay = users.find((u) => u.id === draft.technicianId)?.name ?? '—';
 
   const toggle = (idx: number) =>
     setChecklist((cl) => cl.map((c, i) => (i === idx ? { ...c, done: !c.done } : c)));
   const persist = (extra: InterventionUpdate = {}) => onSave({ ...draft, checklist, ...extra });
+  // Closing from the back-office never fakes the technician's signature.
   const closeWork = () =>
     persist({
       status: 'completed',
       actualDuration: draft.actualDuration ?? item.duration,
-      signedBy: draft.signedBy ?? techDisplay,
     });
 
   const overrun = isClosed && item.actualDuration != null && item.actualDuration > item.duration;
@@ -574,17 +585,17 @@ function InterventionSheet({
               disabled={saving}
               className="inline-flex items-center gap-2 rounded-md border border-line bg-surface px-3.5 py-2 text-sm font-semibold text-body disabled:opacity-50"
             >
-              <Icon name="check" size={14} /> Enregistrer
+                {saving ? <Spinner /> : <Icon name="check" size={14} />} {saving ? 'Enregistrement…' : 'Enregistrer'}
             </button>
           )}
           {!locked && (
             <button
               onClick={closeWork}
-              disabled={!allDone || !signed || saving}
-              title={!allDone ? 'Validez toutes les tâches' : !signed ? 'Signature requise' : ''}
+              disabled={!allDone || saving}
+              title={!allDone ? 'Validez toutes les tâches' : ''}
               className="inline-flex items-center gap-2 rounded-md border border-brand-deep bg-brand-deep px-3.5 py-2 text-sm font-semibold text-white disabled:opacity-50"
             >
-              <Icon name="check" size={14} /> Clôturer le bon de travail
+              {saving ? <Spinner /> : <Icon name="check" size={14} />} Clôturer le bon de travail
             </button>
           )}
         </>
@@ -607,11 +618,11 @@ function InterventionSheet({
         </div>
 
         {/* Editable fields */}
-        <div className="grid grid-cols-2 gap-3.5">
+        <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-2">
           <Field label="Technicien">
             <select
               className={inputClass}
-              value={draft.technicianId}
+              value={draft.technicianId ?? ''}
               disabled={locked}
               onChange={(e) => setDraft((d) => ({ ...d, technicianId: e.target.value }))}
             >
@@ -625,7 +636,7 @@ function InterventionSheet({
           <Field label="Statut">
             <select
               className={inputClass}
-              value={draft.status}
+              value={draft.status ?? ''}
               onChange={(e) => setDraft((d) => ({ ...d, status: e.target.value as InterventionStatus }))}
             >
               {(['planned', 'in_progress', 'completed', 'cancelled'] as const).map((s) => (
@@ -639,7 +650,7 @@ function InterventionSheet({
             <input
               type="date"
               className={inputClass}
-              value={draft.scheduledFor}
+              value={draft.scheduledFor ?? ''}
               disabled={locked}
               onChange={(e) => setDraft((d) => ({ ...d, scheduledFor: e.target.value }))}
             />
@@ -650,7 +661,7 @@ function InterventionSheet({
               min={0}
               step={0.5}
               className={inputClass}
-              value={draft.duration}
+              value={draft.duration ?? ''}
               disabled={locked}
               onChange={(e) => setDraft((d) => ({ ...d, duration: Number(e.target.value) }))}
             />
@@ -659,7 +670,7 @@ function InterventionSheet({
         <Field label="Description de l’opération">
           <textarea
             className={`${inputClass} min-h-[70px] resize-y`}
-            value={draft.description}
+            value={draft.description ?? ''}
             disabled={locked}
             onChange={(e) => setDraft((d) => ({ ...d, description: e.target.value }))}
           />
@@ -731,24 +742,22 @@ function InterventionSheet({
         </div>
 
         {/* Signature + rating */}
-        <div className="grid grid-cols-2 gap-4 pt-1">
+        <div className="grid grid-cols-1 gap-4 pt-1 sm:grid-cols-2">
           <div>
-            <div className="mb-2 text-[12px] font-bold uppercase tracking-[0.05em] text-mute">Signature numérique</div>
-            <div className="flex h-[52px] items-center justify-center rounded-md border border-dashed border-line bg-surface-soft">
-              {signed ? (
-                <span className="font-[cursive] text-[18px] text-brand-deep">{draft.signedBy}</span>
+            <div className="mb-2 text-[12px] font-bold uppercase tracking-[0.05em] text-mute">Signature du technicien</div>
+            <div className="flex min-h-[72px] items-center justify-center rounded-md border border-dashed border-line bg-white p-2">
+              {signature?.url ? (
+                // eslint-disable-next-line @next/next/no-img-element -- short-lived signed URL
+                <img src={signature.url} alt={`Signature de ${item.signedBy ?? techDisplay}`} className="max-h-[96px] w-auto" />
               ) : (
-                <span className="text-[12.5px] text-faint">Non signé</span>
+                <span className="px-2 text-center text-[12.5px] text-faint">
+                  {isClosed
+                    ? 'Clôturé sans signature du technicien'
+                    : 'Signée par le technicien dans l’app mobile, à la clôture'}
+                </span>
               )}
             </div>
-            {!signed && !locked && (
-              <button
-                onClick={() => setDraft((d) => ({ ...d, signedBy: techDisplay }))}
-                className="mt-2 inline-flex items-center gap-1.5 rounded-md bg-surface-muted px-3 py-1.5 text-[12px] font-semibold text-body hover:bg-surface-soft"
-              >
-                <Icon name="edit" size={12} /> Signer le rapport
-              </button>
-            )}
+            {signature && item.signedBy && <div className="mt-1.5 text-[12px] text-mute">Signé par {item.signedBy}</div>}
           </div>
           <div>
             <div className="mb-2 text-[12px] font-bold uppercase tracking-[0.05em] text-mute">Évaluation (responsable)</div>
@@ -795,8 +804,8 @@ function InterventionsCalendar({
   const eventsOn = (d: Date) => interventions.filter((i) => i.scheduledFor.slice(0, 10) === toISO(d));
 
   return (
-    <div className="rounded-lg border border-line bg-surface px-5 py-[18px]">
-      <div className="mb-3 flex items-center justify-between">
+    <div className="rounded-lg border border-line bg-surface px-3 py-[18px] sm:px-5">
+      <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
         <div className="text-[13px] font-semibold capitalize text-ink">{calendarTitle(cells)}</div>
         <div className="flex items-center gap-1">
           <button
@@ -825,6 +834,9 @@ function InterventionsCalendar({
           </button>
         </div>
       </div>
+      {/* 7 columns stay readable on phones by scrolling sideways. */}
+      <div className="-mx-1 overflow-x-auto px-1 pb-1">
+      <div className="min-w-[640px]">
       <div className="mb-1.5 grid grid-cols-7 gap-1">
         {weekdays.map((w) => (
           <div key={w} className="px-1.5 py-1 text-[11px] font-semibold uppercase tracking-[0.06em] text-mute">
@@ -870,6 +882,8 @@ function InterventionsCalendar({
             </div>
           );
         })}
+      </div>
+      </div>
       </div>
     </div>
   );

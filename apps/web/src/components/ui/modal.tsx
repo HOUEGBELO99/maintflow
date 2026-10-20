@@ -46,14 +46,14 @@ export function Modal({
   if (!open) return null;
   return (
     <div
-      className="fixed inset-0 z-[80] flex items-center justify-center bg-[rgba(10,20,12,0.45)] p-6 backdrop-blur-[2px]"
+      className="fixed inset-0 z-[80] flex items-end justify-center bg-[rgba(10,20,12,0.45)] p-0 sm:items-center sm:p-6 backdrop-blur-[2px]"
       onClick={onClose}
     >
       <div
-        className={`flex max-h-[90vh] w-full ${wide ? 'max-w-[680px]' : 'max-w-[560px]'} flex-col overflow-hidden rounded-[20px] bg-surface shadow-[var(--shadow-md)]`}
+        className={`flex max-h-[92vh] w-full sm:max-h-[90vh] ${wide ? 'max-w-[680px]' : 'max-w-[560px]'} flex-col overflow-hidden rounded-t-[20px] bg-surface sm:rounded-[20px] shadow-[var(--shadow-md)]`}
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex items-center justify-between border-b border-line px-[22px] pb-3.5 pt-[18px]">
+        <div className="flex items-center justify-between border-b border-line px-4 pb-3.5 pt-[18px] sm:px-[22px]">
           <div>
             <h2 className="text-[17px] font-semibold">{title}</h2>
             {subtitle && <div className="mt-0.5 text-[12.5px] text-mute">{subtitle}</div>}
@@ -65,9 +65,9 @@ export function Modal({
             <Icon name="plus" size={16} className="rotate-45" />
           </button>
         </div>
-        <div className="flex-1 overflow-y-auto px-[22px] py-5">{children}</div>
+        <div className="flex-1 overflow-y-auto px-4 py-5 sm:px-[22px]">{children}</div>
         {footer && (
-          <div className="flex justify-end gap-2 border-t border-line bg-surface-soft px-[22px] py-3.5">
+          <div className="flex flex-wrap justify-end gap-2 border-t border-line bg-surface-soft px-4 py-3.5 sm:px-[22px]">
             {footer}
           </div>
         )}
