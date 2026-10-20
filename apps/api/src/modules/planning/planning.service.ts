@@ -21,7 +21,7 @@ export class PlanningService {
   constructor(private readonly prisma: PrismaService) {}
 
   listRules(siteId: string) {
-    return this.prisma.planRule.findMany({ where: { siteId }, orderBy: { code: 'asc' } });
+    return this.prisma.planRule.findMany({ where: { siteId }, orderBy: [{ createdAt: 'desc' }, { code: 'desc' }] });
   }
 
   listReminders(siteId: string) {

@@ -26,7 +26,7 @@ describe('MachinesService', () => {
     await service.findAll('site-1');
     expect(prisma.machine.findMany).toHaveBeenCalledWith({
       where: { siteId: 'site-1' },
-      orderBy: { code: 'asc' },
+      orderBy: [{ createdAt: 'desc' }, { code: 'desc' }],
     });
   });
 

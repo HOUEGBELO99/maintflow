@@ -97,7 +97,7 @@ export default function InterventionsPage() {
       if (filter === 'corrective') return i.kind === 'corrective';
       return true;
     })
-    .sort((a, b) => a.scheduledFor.localeCompare(b.scheduledFor));
+    .sort((a, b) => b.scheduledFor.localeCompare(a.scheduledFor));
 
   return (
     <div>

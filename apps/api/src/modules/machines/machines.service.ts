@@ -16,7 +16,7 @@ export class MachinesService {
   findAll(siteId: string, workshop?: string) {
     const where: Prisma.MachineWhereInput = { siteId };
     if (workshop) where.workshop = workshop;
-    return this.prisma.machine.findMany({ where, orderBy: { code: 'asc' } });
+    return this.prisma.machine.findMany({ where, orderBy: [{ createdAt: 'desc' }, { code: 'desc' }] });
   }
 
   async findOne(siteId: string, id: string) {
